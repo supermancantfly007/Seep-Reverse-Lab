@@ -170,6 +170,21 @@ function Invoke-Capture {
     }
 }
 
+function Test-NativeBundled {
+    <# Unix 上跳过仓库自带的 .exe/.bat/.cmd。与 tool_resolver.path_usable 同一条规则，
+       否则 macOS 会把 jadx.bat / radare2.exe 当成命中，实跑时 Exec format error。 #>
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return $false }
+    # 包目录（js-reverse-mcp / playwright-mcp）本身就是命中，不能只认文件。
+    if ((Get-Item -LiteralPath $Path).PSIsContainer) { return $true }
+    $windows = $false
+    if (Test-Path variable:IsWindows) { $windows = [bool]$IsWindows }
+    elseif ($env:OS -eq 'Windows_NT') { $windows = $true }
+    if ($windows) { return $true }
+    $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
+    return ($ext -notin @('.exe', '.bat', '.cmd'))
+}
+
 function Get-RootCandidates {
     <# 从「根目录」推出候选可执行文件路径。toolbox_layout 优先，否则按 path_names 推。 #>
     param($ToolDef, [string]$ToolRoot)
@@ -179,8 +194,9 @@ function Get-RootCandidates {
         $list = @($ToolDef.toolbox_layout)
     }
     elseif ($ToolDef.id -eq 'ida') {
-        $list = @('{root}/ida.exe', '{root}/ida64.exe',
-            '{root}/App/IDA Pro/ida.exe', '{root}/App/IDA Pro/ida64.exe')
+        $list = @('{root}/ida.exe', '{root}/ida64.exe', '{root}/ida', '{root}/idat',
+            '{root}/App/IDA Pro/ida.exe', '{root}/App/IDA Pro/ida64.exe',
+            '{root}/Contents/MacOS/ida', '{root}/Contents/MacOS/idat')
     }
     else {
         $names = @()
@@ -254,8 +270,9 @@ function Resolve-OneTool {
             'cache' {
                 if (-not $Cache -or -not $Cache.ContainsKey($id)) { break }
                 $cached = $Cache[$id]
-                if ($cached -and $cached.path -and (Test-Path -LiteralPath $cached.path)) {
-                    # 缓存里的 .cmd 垫片可能已被卸载，实跑阶段会兜住；这里只做存在性检查
+                if ($cached -and $cached.path -and (Test-NativeBundled -Path $cached.path)) {
+                    # 缓存里的 .cmd 垫片可能已被卸载，实跑阶段会兜住；这里只做存在性检查。
+                    # Unix 上同时丢掉上次记下的 .exe/.bat，避免把 Windows 二进制当成命中。
                     $result.path = $cached.path
                     $result.source = 'cache'
                 }
@@ -264,8 +281,8 @@ function Resolve-OneTool {
             'bundled' {
                 if (-not ($ToolDef.PSObject.Properties.Name -contains 'bundled')) { break }
                 foreach ($b in @($ToolDef.bundled)) {
-$full = Join-Path $Root ($b.Replace('/', '\'))
-                    if (Test-Path -LiteralPath $full) {
+                    $full = Join-Path $Root ($b.Replace('/', '\'))
+                    if (Test-NativeBundled -Path $full) {
                         $result.path = (Resolve-Path -LiteralPath $full).Path
                         $result.source = 'bundled'
                         break
@@ -386,15 +403,27 @@ function Test-ToolVerify {
             }
             # IDA 自带 Python 能 import ida_pro_mcp 才算「真的能联动」
             $idaRoot = Split-Path -Parent $exe
-            $srv = Get-ChildItem -LiteralPath $idaRoot -Recurse -Filter 'server.py' -ErrorAction SilentlyContinue |
-                Where-Object { $_.FullName -match 'ida_pro_mcp' } | Select-Object -First 1
-            if ($srv) {
+            $libOk = @('libidalib.dylib', 'libidalib.so', 'idalib.dll') | Where-Object {
+                Test-Path -LiteralPath (Join-Path $idaRoot $_)
+            } | Select-Object -First 1
+            $mcp = Join-Path $env:USERPROFILE '.pi/agent/ida-mcp-venv/bin/idalib-mcp'
+            $mcpOk = (Test-Path -LiteralPath $mcp) -or [bool](Get-Command idalib-mcp -ErrorAction SilentlyContinue)
+            if (-not $mcpOk) {
+                $srv = Get-ChildItem -LiteralPath $idaRoot -Recurse -Filter 'server.py' -ErrorAction SilentlyContinue |
+                    Where-Object { $_.FullName -match 'ida_pro_mcp' } | Select-Object -First 1
+                $mcpOk = [bool]$srv
+            }
+            if ($libOk -and $mcpOk) {
                 $Resolved.verified = $true
-                $Resolved.detail = 'ida.exe + ida_pro_mcp 就绪'
+                $Resolved.detail = 'IDA + idalib-mcp 就绪'
+            }
+            elseif ($mcpOk) {
+                $Resolved.verified = $true
+                $Resolved.detail = 'IDA 可执行文件 + idalib-mcp 就绪'
             }
             else {
                 $Resolved.state = 'DEGRADED'
-                $Resolved.detail = 'ida.exe 在位，但未装 ida_pro_mcp（跑 install-ida.ps1）'
+                $Resolved.detail = 'IDA 在位，但未找到 idalib-mcp（检查 ~/.pi/agent/ida-mcp-venv）'
             }
             return $Resolved
         }

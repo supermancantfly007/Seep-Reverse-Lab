@@ -12,7 +12,7 @@ Seep Lab经过跨平台路径与工具抽象后，对不同操作系统具备分
 |---|---|---|---|---|
 | **Android 逆向 (apkseep)** | 🟢 **原生完美支持** | 🟢 **原生完美支持** | 🟢 原生支持 | JADX + Apktool (Java跨平台) + ADB + Frida |
 | **Web 方法论 / JS 签名取证** | 🟢 原生支持 | 🟢 原生支持 | 🟢 原生支持 | Playwright + `js_reverse_*` + 知识库（与平台无关） |
-| **Web / 流媒体取证工具链**（8 个 `seep_web_*`） | 🟡 **需 PowerShell 7** | 🟡 **需 PowerShell 7** | 🟢 原生支持 | 取证脚本为 PowerShell 实现；另需自装 ffmpeg/ffprobe |
+| **Web / 流媒体取证工具链**（8 个 `seep_web_*`） | 🟢 **Python 引擎** | 🟢 **Python 引擎** | 🟢 Python 引擎 | `Tool/scripts/web/web.py`，不再依赖 PowerShell；HLS 实解另需 ffmpeg/ffprobe |
 | **Flutter / Dart AOT**（`seep_aotopsy`） | 🔴 **不支持** | 🔴 **不支持** | 🟢 原生支持 | `aotopsy.exe` 是 Windows PE 单文件；Unix 请用 apktool 解包后交给 r2/IDA |
 | **跨平台二进制分析 (seep)** | 🟢 **原生支持** (系统r2) | 🟢 **原生支持** (系统r2) | 🟢 内置r2.exe | Radare2 自动探测系统 `radare2` / `rabin2` / `rasm2` |
 | **IDA Pro 自动化联动** | 🟡 **需本地 Mac 版 IDA** | 🟡 **需本地 Linux 版 IDA** | 🟢 内置脚本探测 | 均通过 13337 端口 MCP 通用协议直连 |

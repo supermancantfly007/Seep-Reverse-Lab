@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # ==============================================================================
 # Seep Reverse Lab — Linux / macOS 原生全彩自检与部署核验脚本 (Verifier)
 # 对应 Windows check.ps1 / verify.ps1，输出结构化 ANSI 彩色报告
@@ -418,10 +418,10 @@ echo -e "  [体检报告] 核心检查通过: ${GREEN}$OK_COUNT${RESET} 项 | �
 echo -e "${CYAN}================================================================================${RESET}"
 
 if [ $FAIL_COUNT -eq 0 ]; then
-    echo -e "\n  ${GREEN}🎉 结论: 工作台在当前 $(uname -s) 环境处于 [READY / 完备就绪] 状态！${RESET}"
+    echo -e "\n  ${GREEN}结论: 工作台在当前 $(uname -s) 环境处于 [READY / 完备就绪] 状态！${RESET}"
     echo -e "  输入 ${CYAN}lab：${RESET} 即可开启白盒测试！\n"
     exit 0
 else
-    echo -e "\n  ${RED}❌ 结论: 存在未通过的核心检查项，请检查上述红色标记。${RESET}\n"
+    echo -e "\n  ${RED}结论: 存在未通过的核心检查项，请检查上述红色标记。${RESET}\n"
     exit 1
 fi

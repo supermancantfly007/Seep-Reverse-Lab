@@ -244,7 +244,14 @@
         "F:/IDA Pro",
         "~/Desktop/IDA Pro/App/IDA Pro",
         "~/Desktop/IDA Pro 9.4/App/IDA Pro",
-        "~/Tools/IDA Pro 9.4/App/IDA Pro"
+        "~/Tools/IDA Pro 9.4/App/IDA Pro",
+        "/Applications/IDA Professional 9.0.app",
+        "/Applications/IDA Professional 9.1.app",
+        "/Applications/IDA Professional 9.2.app",
+        "/Applications/IDA Professional 9.3.app",
+        "/Applications/IDA Professional 9.4.app",
+        "/Applications/IDA Pro.app",
+        "~/Applications/IDA Professional 9.0.app"
       ],
       "verify": {
         "kind": "ida",
@@ -309,11 +316,18 @@
       "env": "SEEP_ANDROID_TOOLBOX",
       "toolbox_layout": [
         "{root}/bin/frida.exe",
+        "{root}/bin/frida.cmd",
         "{root}/bin/frida",
+        "{root}/frida-env/Scripts/frida.exe",
+        "{root}/frida-env/bin/frida",
         "{root}/frida.exe"
       ],
       "path_names": [
         "frida"
+      ],
+      "candidates": [
+        "~/.seep/android",
+        "D:/Tool/Android"
       ],
       "verify": {
         "kind": "version",
@@ -332,11 +346,18 @@
       "env": "SEEP_ANDROID_TOOLBOX",
       "toolbox_layout": [
         "{root}/bin/objection.exe",
+        "{root}/bin/objection.cmd",
         "{root}/bin/objection",
+        "{root}/frida-env/Scripts/objection.exe",
+        "{root}/frida-env/bin/objection",
         "{root}/objection.exe"
       ],
       "path_names": [
         "objection"
+      ],
+      "candidates": [
+        "~/.seep/android",
+        "D:/Tool/Android"
       ],
       "verify": {
         "kind": "version",
@@ -355,11 +376,18 @@
       "env": "SEEP_ANDROID_TOOLBOX",
       "toolbox_layout": [
         "{root}/bin/apkid.exe",
+        "{root}/bin/apkid.cmd",
         "{root}/bin/apkid",
+        "{root}/frida-env/Scripts/apkid.exe",
+        "{root}/frida-env/bin/apkid",
         "{root}/apkid.exe"
       ],
       "path_names": [
         "apkid"
+      ],
+      "candidates": [
+        "~/.seep/android",
+        "D:/Tool/Android"
       ],
       "verify": {
         "kind": "version",
@@ -378,10 +406,17 @@
       "env": "SEEP_ANDROID_TOOLBOX",
       "toolbox_layout": [
         "{root}/bin/frida-dexdump.exe",
-        "{root}/bin/frida-dexdump"
+        "{root}/bin/frida-dexdump.cmd",
+        "{root}/bin/frida-dexdump",
+        "{root}/frida-env/Scripts/frida-dexdump.exe",
+        "{root}/frida-env/bin/frida-dexdump"
       ],
       "path_names": [
         "frida-dexdump"
+      ],
+      "candidates": [
+        "~/.seep/android",
+        "D:/Tool/Android"
       ],
       "verify": {
         "kind": "version",

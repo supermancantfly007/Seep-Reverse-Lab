@@ -62,7 +62,11 @@ def tool_layout(tool: dict) -> List[str]:
     if tool.get("toolbox_layout"):
         return list(tool["toolbox_layout"])
     if tool.get("id") == "ida":
-        return ["{root}/ida.exe", "{root}/ida64.exe", "{root}/App/IDA Pro/ida.exe"]
+        return [
+            "{root}/ida.exe", "{root}/ida64.exe", "{root}/ida", "{root}/idat",
+            "{root}/App/IDA Pro/ida.exe", "{root}/App/IDA Pro/ida64.exe",
+            "{root}/Contents/MacOS/ida", "{root}/Contents/MacOS/idat",
+        ]
     out: List[str] = []
     for n in tool.get("path_names") or []:
         out += ["{root}/%s.exe" % n, "{root}/%s" % n,
@@ -71,10 +75,27 @@ def tool_layout(tool: dict) -> List[str]:
     return out
 
 
+def path_usable(full: str) -> bool:
+    """路径在，且是当前系统能用的形态。
+
+    目录（js-reverse-mcp / playwright-mcp 这种包根）算命中。
+    Unix 上仓库自带的 .exe/.bat/.cmd 不算命中。
+    """
+    if not full or not os.path.exists(full):
+        return False
+    if os.path.isdir(full):
+        return True
+    if not os.path.isfile(full):
+        return False
+    if sys.platform == "win32":
+        return True
+    return not full.lower().endswith((".exe", ".bat", ".cmd"))
+
+
 def find_in_root(tool: dict, root: str) -> Optional[str]:
     for pat in tool_layout(tool):
         cand = expand_pattern(pat, root)
-        if cand and os.path.isfile(cand):
+        if path_usable(cand):
             return cand
     return None
 
@@ -220,13 +241,13 @@ def resolve_one(tool: dict, cache: Dict[str, Any], repo_root: str) -> Dict[str, 
         elif layer == "cache":
             entry = cache.get(tid) or {}
             cached = entry.get("path")
-            if cached and os.path.exists(cached):
+            if path_usable(cached):
                 path, source = cached, "cache"
 
         elif layer == "bundled":
             for b in tool.get("bundled") or []:
                 full = os.path.join(repo_root, b.replace("/", os.sep))
-                if os.path.exists(full):
+                if path_usable(full):
                     path, source = full, "bundled"
                     break
 
@@ -304,17 +325,25 @@ def verify_one(tool: dict, resolved: Dict[str, Any], find_java=None) -> Dict[str
 
     if kind == "ida":
         root = os.path.dirname(p)
-        found = False
-        for dirpath, _dirnames, filenames in os.walk(root):
-            if "server.py" in filenames and "ida_pro_mcp" in dirpath:
-                found = True
-                break
-        if found:
+        lib_ok = any(os.path.isfile(os.path.join(root, name)) for name in (
+            "libidalib.dylib", "libidalib.so", "idalib.dll",
+        ))
+        mcp_ok = os.path.isfile(os.path.expanduser("~/.pi/agent/ida-mcp-venv/bin/idalib-mcp")) \
+            or shutil.which("idalib-mcp") is not None
+        if not mcp_ok:
+            for dirpath, _dirnames, filenames in os.walk(root):
+                if "server.py" in filenames and "ida_pro_mcp" in dirpath.replace("\\", "/"):
+                    mcp_ok = True
+                    break
+        if lib_ok and mcp_ok:
             resolved["verified"] = True
-            resolved["detail"] = "ida.exe + ida_pro_mcp 就绪"
+            resolved["detail"] = "IDA + idalib-mcp 就绪"
+        elif mcp_ok:
+            resolved["verified"] = True
+            resolved["detail"] = "IDA 可执行文件 + idalib-mcp 就绪"
         else:
             resolved["state"] = "DEGRADED"
-            resolved["detail"] = "ida.exe 在位，但未装 ida_pro_mcp（跑 install-ida.ps1）"
+            resolved["detail"] = "IDA 在位，但未找到 idalib-mcp（检查 ~/.pi/agent/ida-mcp-venv）"
         return resolved
 
     exe = p

@@ -111,19 +111,34 @@ WEB_TOOLBOX_DIR = os.environ.get(
 WEB_SCRIPT_DIR = os.path.join(os.path.dirname(BASE_DIR), "scripts", "web")
 
 
+def _first_existing_tool(candidates: List[str]) -> Optional[str]:
+    """按顺序返回第一个本机能用的文件。Unix 上跳过 .exe/.bat/.cmd，避免命中仓库里的 Windows 二进制。"""
+    for c in candidates:
+        if not c or not os.path.isfile(c):
+            continue
+        if sys.platform != "win32" and c.lower().endswith((".exe", ".bat", ".cmd")):
+            continue
+        return c
+    return None
+
+
 def _resolve_web_tool(name: str) -> Optional[str]:
-    """解析 Web 工具箱内工具路径（真实 exe 优先于 .cmd 垫片 → 系统 PATH）。"""
+    """解析 Web 工具箱内工具路径（本机可执行文件优先，再回退系统 PATH）。"""
     exe = f"{name}.exe"
-    candidates = [
+    win = [
         os.path.join(WEB_TOOLBOX_DIR, "ffmpeg", "bin", exe),
         os.path.join(WEB_TOOLBOX_DIR, "bin", exe),
         os.path.join(WEB_TOOLBOX_DIR, "bin", f"{name}.cmd"),
         os.path.join(WEB_TOOLBOX_DIR, exe),
     ]
-    for c in candidates:
-        if os.path.isfile(c):
-            return c
-    return shutil.which(name)
+    unix = [
+        os.path.join(WEB_TOOLBOX_DIR, "ffmpeg", "bin", name),
+        os.path.join(WEB_TOOLBOX_DIR, "bin", name),
+        os.path.join(WEB_TOOLBOX_DIR, name),
+    ]
+    ordered = (win + unix) if sys.platform == "win32" else (unix + win)
+    hit = _first_existing_tool(ordered)
+    return hit or shutil.which(name)
 
 
 def _web_toolbox_status() -> Dict[str, Any]:
@@ -144,56 +159,74 @@ def _find_powershell() -> Optional[str]:
     return None
 
 
-def _run_web_script(script_name: str, args: List[str], timeout: int = 600) -> Tuple[bool, str, Optional[dict]]:
-    """调用 Tool/scripts/web 下的取证脚本（统一用 -Json 模式），返回 (ok, raw, parsed_json)。"""
-    ps = _find_powershell()
-    if not ps:
-        if sys.platform == "win32":
-            hint = "请确认 PowerShell 未被禁用，或用 Setup/repair-tools.ps1 修复"
-        else:
-            hint = ("Web 取证脚本是 PowerShell 实现，Unix 需自行安装 PowerShell 7：\n"
-                    "  macOS : brew install --cask powershell\n"
-                    "  Debian: sudo apt-get install -y powershell\n"
-                    "  Fedora: sudo dnf install -y powershell\n"
-                    "（Windows-only 的能力；详见 MANUAL/CROSS-PLATFORM.md）")
-        return False, "[ERROR]: 未找到 PowerShell（pwsh / powershell）—— " + hint, None
-    script_path = os.path.join(WEB_SCRIPT_DIR, script_name)
-    if not os.path.isfile(script_path):
-        return False, f"[ERROR]: 脚本不存在: {script_path}", None
+def _parse_web_json(text: str) -> Optional[dict]:
+    text = (text or "").strip()
+    if not text:
+        return None
+    try:
+        data = json.loads(text)
+        return data if isinstance(data, dict) else None
+    except Exception:
+        start = text.find("{")
+        end = text.rfind("}")
+        if start < 0 or end <= start:
+            return None
+        try:
+            data = json.loads(text[start:end + 1])
+            return data if isinstance(data, dict) else None
+        except Exception:
+            return None
 
-    cmd = [ps, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path, "-Json"] + args
+
+def _run_web_script(script_name: str, args: List[str], timeout: int = 600) -> Tuple[bool, str, Optional[dict]]:
+    """调用 Web 取证引擎。优先 Python（macOS/Linux/Windows 同一套），旧 .ps1 仅在 Python 入口缺失时回退。"""
+    engine = os.path.join(WEB_SCRIPT_DIR, "web.py")
+    if os.path.isfile(engine):
+        cmd = [sys.executable, engine, script_name, "-Json"] + args
+    else:
+        ps = _find_powershell()
+        if not ps:
+            return False, "[ERROR]: 未找到 web.py，也没有 PowerShell 可回退", None
+        script_path = os.path.join(WEB_SCRIPT_DIR, script_name)
+        if not os.path.isfile(script_path):
+            return False, f"[ERROR]: 脚本不存在: {script_path}", None
+        cmd = [ps, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path, "-Json"] + args
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
                               errors="replace", timeout=timeout, stdin=subprocess.DEVNULL)
     except subprocess.TimeoutExpired:
         return False, f"[ERROR]: 脚本超时 (>{timeout}s): {script_name}", None
 
-    raw = (proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")
-    payload = None
-    start = raw.find("{")
-    end = raw.rfind("}")
-    if start >= 0 and end > start:
-        try:
-            payload = json.loads(raw[start:end + 1])
-        except Exception:
-            payload = None
+    raw = proc.stdout or ""
+    payload = _parse_web_json(raw) or _parse_web_json((proc.stdout or "") + "\n" + (proc.stderr or ""))
     if payload is None:
         return False, _clean_r2_output(raw), None
     return True, raw, payload
 
 
 def _resolve_android_tool(name: str) -> Optional[str]:
-    """解析 Android 外部工具箱内工具路径（bin 垫片 → venv → aotopsy → platform-tools → 系统 PATH）。"""
-    candidates = [
+    """解析 Android 外部工具箱内工具路径。
+
+    Windows：bin/*.cmd → frida-env/Scripts/*.exe → aotopsy / platform-tools。
+    Unix   ：bin/<name> → frida-env/bin/<name>（install-capabilities.sh 的落点）→ PATH。
+    之前只查 Windows 路径，~/.seep/android 里已装的 frida/objection/apkid 会被报成 MISSING。
+    """
+    win = [
         os.path.join(ANDROID_TOOLBOX_DIR, "bin", f"{name}.cmd"),
+        os.path.join(ANDROID_TOOLBOX_DIR, "bin", f"{name}.exe"),
         os.path.join(ANDROID_TOOLBOX_DIR, "frida-env", "Scripts", f"{name}.exe"),
         os.path.join(ANDROID_TOOLBOX_DIR, "aotopsy", f"{name}.exe"),
         os.path.join(ANDROID_TOOLBOX_DIR, "platform-tools", f"{name}.exe"),
     ]
-    for c in candidates:
-        if os.path.isfile(c):
-            return c
-    return shutil.which(name)
+    unix = [
+        os.path.join(ANDROID_TOOLBOX_DIR, "bin", name),
+        os.path.join(ANDROID_TOOLBOX_DIR, "frida-env", "bin", name),
+        os.path.join(ANDROID_TOOLBOX_DIR, "aotopsy", name),
+        os.path.join(ANDROID_TOOLBOX_DIR, "platform-tools", name),
+    ]
+    ordered = (win + unix) if sys.platform == "win32" else (unix + win)
+    hit = _first_existing_tool(ordered)
+    return hit or shutil.which(name)
 
 
 def _android_toolbox_status() -> Dict[str, Any]:
@@ -344,21 +377,20 @@ def seep_status(verify: bool = False) -> str:
     apktool_status = "Ready (Jar present)" if os.path.isfile(APKTOOL_JAR) else "Missing"
     kb_status = f"Ready ({len(glob.glob(os.path.join(KB_DIR, '**', '*.md'), recursive=True))} documents)" if os.path.isdir(KB_DIR) else "Missing"
 
-    # 平台边界：如实上报哪些能力在当前系统上根本不成立，
-    # 避免 Unix 用户看着 38 个工具却不知道其中 8 个（Web 取证）与 1 个（Flutter AOT）用不了。
+    # 平台边界：如实上报哪些能力在当前系统上根本不成立。
+    # Web 取证已是 Python 引擎；Flutter AOT 仍是 Windows PE。
     _win = sys.platform == "win32"
-    _has_pwsh = _find_powershell() is not None
     platform_boundaries = {
         "platform": sys.platform,
         "web_forensics": {
-            "status": "ready" if (_win and _has_pwsh) or _has_pwsh else "windows-only",
-            "requires": "PowerShell 7 + ffmpeg/ffprobe",
+            "status": "ready",
+            "requires": "Python 3 标准库；HLS 实解另需 ffmpeg/ffprobe",
             "tools": [
                 "seep_web_pipeline", "seep_web_gate", "seep_cms_fingerprint",
                 "seep_hls_analyze", "seep_http_replay", "seep_spider_extract",
                 "seep_web_report", "seep_web_toolbox",
             ],
-            "note": "取证脚本为 PowerShell 实现；Unix 需安装 pwsh 才能驱动。",
+            "note": "取证引擎是 Tool/scripts/web/web.py（Python）。不再依赖 PowerShell。",
         },
         "flutter_aot": {
             "status": "ready" if _win else "windows-only",
@@ -1328,21 +1360,17 @@ def seep_web_toolbox() -> str:
     """检查 Web / 流媒体取证工具箱就绪状态（ffmpeg / ffprobe / node）。
 
     ffmpeg 是 HLS 取证的核心：既能 -headers 携带防盗链头，也能直接解密 AES-128 分片。
-    缺失时调用方应运行：
-    powershell -ExecutionPolicy Bypass -File Tool\\scripts\\web\\install-web-toolbox.ps1
+    8 个 seep_web_* 由 Tool/scripts/web/web.py（Python）驱动，不需要 PowerShell。
+    缺 ffmpeg 时：./setup/install-capabilities.sh --only web
     """
     status = _web_toolbox_status()
-    _ps = _find_powershell()
-    _supported = _ps is not None
+    engine = os.path.join(WEB_SCRIPT_DIR, "web.py")
     payload = {
         "toolbox_root": WEB_TOOLBOX_DIR,
         "script_dir": WEB_SCRIPT_DIR,
-        # 平台可用性必须显式上报：8 个 Web 工具都靠 PowerShell 脚本驱动，
-        # 在未装 pwsh 的 Linux/macOS 上它们一律不可用。此前只报「缺 ffmpeg」，
-        # 会让人误以为装上 ffmpeg 就能跑。
-        "platform_supported": _supported,
+        "platform_supported": os.path.isfile(engine),
         "required_runtime": {
-            "powershell": _ps or "未找到（Unix 需安装 PowerShell 7）",
+            "engine": engine if os.path.isfile(engine) else "缺失 web.py",
             "platform": sys.platform,
         },
         "tools": {k: {"ready": bool(v), "path": v or "—"} for k, v in status.items()},

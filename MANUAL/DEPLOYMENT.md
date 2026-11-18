@@ -241,7 +241,7 @@ powershell -File setup\install-capabilities.ps1 -CheckOnly
 > 其余工具照常工作。`check.ps1` / `verify.sh` 会以 🟡 DEGRADED 如实标出，**不会**因此判失败。
 >
 > **平台边界**：`aotopsy` 是 Windows PE 单文件，Unix 不支持；8 个 `seep_web_*` 工具依赖
-> PowerShell 脚本，Unix 需先安装 PowerShell 7 才能驱动。详见
+> Python 引擎（`Tool/scripts/web/web.py`），不再依赖 PowerShell。详见
 > [CROSS-PLATFORM.md](CROSS-PLATFORM.md)。
 
 **装在哪里 / 怎么改位置**：默认 `D:\Tool\Web` 与 `D:\Tool\Android`，

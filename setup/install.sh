@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # ==============================================================================
 # Seep Reverse Lab — Linux / macOS 一键部署（Installer）
 # ==============================================================================
@@ -224,7 +224,7 @@ step "6/7  生成 DSH 配置（cordis.generated.yml / AGENTS.md）"
 gen_py="$SCRIPT_DIR/generate-configs.py"
 if [ -f "$gen_py" ]; then
     if "$PY_BIN" "$gen_py" --dsh-skills "$DSH_SKILLS" >/dev/null 2>&1; then
-        ok "三份配置已生成（DSH skill 图层: $DSH_SKILLS）"
+        ok "三份配置已生成（DSH skill 图层: ${DSH_SKILLS}）"
     else
         warn "生成失败，手动执行：$PY_BIN setup/generate-configs.py"
         FAILED+=("generate-configs")
@@ -265,7 +265,7 @@ if [ "$SKIP_DSH" = 0 ]; then
             fi
         fi
     else
-        info "未检测到 DSH（$DSH_HOME_DIR），跳过"
+        info "未检测到 DSH（${DSH_HOME_DIR}），跳过"
     fi
 else
     step "6b/7  挂载 DeepSeek Harness MCP 补丁（已跳过 --skip-dsh）"

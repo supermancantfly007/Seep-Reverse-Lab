@@ -80,7 +80,16 @@ case "`uname`" in
     ;;
 esac
 
-CLASSPATH=$APP_HOME/lib/jadx-1.5.1-all.jar
+CLASSPATH=""
+for _jadx_jar in "$APP_HOME"/lib/jadx-*-all.jar; do
+    if [ -f "$_jadx_jar" ]; then
+        CLASSPATH="$_jadx_jar"
+    fi
+done
+unset _jadx_jar
+if [ -z "$CLASSPATH" ]; then
+    die "ERROR: jadx fat jar not found under $APP_HOME/lib"
+fi
 
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then

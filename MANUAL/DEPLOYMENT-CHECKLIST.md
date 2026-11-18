@@ -173,7 +173,7 @@ MCP 配置文件所在位置：
 > 相关工具会返回明确的修复指引，其余工具照常工作 —— 所以统一归 `🟡 DEGRADED`，不判 `🔴 MISSING`。
 >
 > **平台边界**：`aotopsy` 是 Windows PE 单文件，Unix 不适用；8 个 `seep_web_*` 工具依赖
-> PowerShell 取证脚本，Unix 需先安装 PowerShell 7。详见 [CROSS-PLATFORM.md](CROSS-PLATFORM.md)。
+> Python 引擎（`Tool/scripts/web/web.py`），不再依赖 PowerShell。详见 [CROSS-PLATFORM.md](CROSS-PLATFORM.md)。
 
 #### 3c. 🧭 外部工具定位规则 (Tool Registry)
 
