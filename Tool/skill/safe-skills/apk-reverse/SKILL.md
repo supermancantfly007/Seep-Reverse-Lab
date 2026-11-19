@@ -27,12 +27,12 @@ description: 在 CLI 环境下做 Android APK 逆向时使用。适用于 APK �
 
 ## 优先使用脚本的场景
 
-以下流程高频且参数容易出错，优先用 skill 自带脚本：
+以下流程高频且参数容易出错，优先用 skill 自带脚本。**Windows 用同目录 `.ps1`，macOS/Linux 用同目录 `.sh`。** 不要在 Mac/Linux 上跑 `.ps1`，也不要为此安装 pwsh。`.sh` 调本机 `jadx`、`java -jar apktool.jar`、`frida`，参数与对应 `.ps1` 对齐，不是另一套流程。
 
-- 一次性完成 `jadx + apktool` 落盘并产出摘要：`scripts/decode.ps1`
-- Frida 设备检查、进程列举、spawn/attach 注入：`scripts/frida-run.ps1`
-- 重建、对齐、签名、安装 APK：`scripts/rebuild-sign-install.ps1`
-- 快速抽取 Manifest 关键组件与权限：`scripts/manifest-summary.ps1`
+- 一次性完成 `jadx + apktool` 落盘并产出摘要：`scripts/decode.ps1` / `scripts/decode.sh`
+- Frida 设备检查、进程列举、spawn/attach 注入：`scripts/frida-run.ps1` / `scripts/frida-run.sh`
+- 重建、对齐、签名、安装 APK：`scripts/rebuild-sign-install.ps1` / `scripts/rebuild-sign-install.sh`
+- 快速抽取 Manifest 关键组件与权限：`scripts/manifest-summary.ps1` / `scripts/manifest-summary.sh`
 
 以下一行命令保持直接调用，不单独封装：
 
@@ -44,30 +44,37 @@ description: 在 CLI 环境下做 Android APK 逆向时使用。适用于 APK �
 
 ## 自带脚本
 
-### `scripts/decode.ps1`
+### `scripts/decode.ps1` / `scripts/decode.sh`
 
 用途：
 
-- 统一跑 `jadx` 和 `apktool`
+- 统一跑 `jadx` 和 `apktool`（`.sh` 里 apktool 是 `java -jar apktool.jar`）
 - 默认在原 APK 同目录创建任务输出目录
 - 输出 `package`、`java_files`、`smali_dirs`、`so_files` 等摘要
 - 兼容 `jadx` 部分反编译错误但仍然有可用产物的情况
 
-示例：
+示例（Windows `.ps1`）：
 
 ```powershell
 pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\decode.ps1" -ApkPath "D:\DOWNLOAD\app.apk" -Clean
 pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\decode.ps1" -ApkPath "D:\DOWNLOAD\app.apk" -Name demo -SkipJadx
 ```
 
-### `scripts/frida-run.ps1`
+示例（macOS/Linux `.sh`）：
+
+```bash
+bash Tool/skill/safe-skills/apk-reverse/scripts/decode.sh --apk-path /path/to/app.apk --clean
+bash Tool/skill/safe-skills/apk-reverse/scripts/decode.sh --apk-path /path/to/app.apk --name demo --skip-jadx
+```
+
+### `scripts/frida-run.ps1` / `scripts/frida-run.sh`
 
 用途：
 
 - 统一 Frida 的设备、进程、spawn/attach 入口
 - 避免手写参数时混淆 `-f`、`-n`、`-U`
 
-示例：
+示例（Windows `.ps1`）：
 
 ```powershell
 pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\frida-run.ps1" -ListDevices
@@ -75,20 +82,35 @@ pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\frida-run.ps1" -Usb -L
 pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\frida-run.ps1" -Usb -Spawn -Package com.example.app -ScriptPath "D:\hooks\test.js"
 ```
 
-### `scripts/rebuild-sign-install.ps1`
+示例（macOS/Linux `.sh`，调本机 `frida`）：
+
+```bash
+bash Tool/skill/safe-skills/apk-reverse/scripts/frida-run.sh --list-devices
+bash Tool/skill/safe-skills/apk-reverse/scripts/frida-run.sh --usb --list-processes
+bash Tool/skill/safe-skills/apk-reverse/scripts/frida-run.sh --usb --spawn --package com.example.app --script-path /path/hooks/test.js
+```
+
+### `scripts/rebuild-sign-install.ps1` / `scripts/rebuild-sign-install.sh`
 
 用途：
 
-- `apktool b` 重建 APK
+- `apktool b` 重建 APK（`.sh` 用 `java -jar apktool.jar b`）
 - `zipalign` 对齐
 - `apksigner` 签名与验签
 - 可选直接 `adb install`
 
-示例：
+示例（Windows `.ps1`）：
 
 ```powershell
 pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\rebuild-sign-install.ps1" -ProjectDir "C:\work\apktool_out" -Clean
 pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\rebuild-sign-install.ps1" -ProjectDir "C:\work\apktool_out" -Install -Reinstall -DeviceSerial "127.0.0.1:7555"
+```
+
+示例（macOS/Linux `.sh`）：
+
+```bash
+bash Tool/skill/safe-skills/apk-reverse/scripts/rebuild-sign-install.sh --project-dir /path/apktool_out --clean
+bash Tool/skill/safe-skills/apk-reverse/scripts/rebuild-sign-install.sh --project-dir /path/apktool_out --install --reinstall --device-serial 127.0.0.1:7555
 ```
 
 说明：
@@ -96,7 +118,7 @@ pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\rebuild-sign-install.p
 - 默认生成并复用调试 keystore
 - 默认输出到 `ProjectDir` 同目录，便于和原始包、解包目录放在一起
 
-### `scripts/manifest-summary.ps1`
+### `scripts/manifest-summary.ps1` / `scripts/manifest-summary.sh`
 
 用途：
 
@@ -105,10 +127,16 @@ pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\rebuild-sign-install.p
 - 列 activity/service/receiver/provider
 - 标出主启动 activity
 
-示例：
+示例（Windows `.ps1`）：
 
 ```powershell
 pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\manifest-summary.ps1" -ManifestPath "C:\work\apktool_out\AndroidManifest.xml"
+```
+
+示例（macOS/Linux `.sh`）：
+
+```bash
+bash Tool/skill/safe-skills/apk-reverse/scripts/manifest-summary.sh --manifest-path /path/apktool_out/AndroidManifest.xml
 ```
 
 如果要分析 `.so`、`lib/arm64-v8a/*.so`、`lib/armeabi-v7a/*.so`，再结合：
@@ -252,8 +280,16 @@ apktool b apktool_out -o rebuilt.apk
 
 或者直接用脚本闭环：
 
+Windows：
+
 ```powershell
 pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\rebuild-sign-install.ps1" -ProjectDir "apktool_out" -Install -Reinstall -DeviceSerial "127.0.0.1:7555"
+```
+
+macOS/Linux：
+
+```bash
+bash Tool/skill/safe-skills/apk-reverse/scripts/rebuild-sign-install.sh --project-dir apktool_out --install --reinstall --device-serial 127.0.0.1:7555
 ```
 
 说明：
@@ -280,7 +316,7 @@ pwsh -File "<WORKSPACE>\\Tool\\skills\apk-reverse\scripts\rebuild-sign-install.p
 建议：
 
 - 简单一次性命令直接用 `frida-*`
-- 需要稳定复用的注入流程优先走 `scripts/frida-run.ps1`
+- 需要稳定复用的注入流程：Windows 走 `scripts/frida-run.ps1`，macOS/Linux 走 `scripts/frida-run.sh`
 
 ### 6. Native `.so` 分流
 

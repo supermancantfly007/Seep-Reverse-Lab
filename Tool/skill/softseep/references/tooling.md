@@ -10,6 +10,8 @@
 5. **自动化任务沙盒建档**：`Tool/scripts/case-init.ps1`
 6. **工具链健康自检**：`Tool/scripts/refresh-tool-index.ps1`
 7. **IDA Pro 自动化 MCP 链路**：`Tool/scripts/trigger_ida_mcp.ps1`
+
+Mac/Linux 上 `case-init.ps1`、`trigger_ida_mcp.ps1` 不要跑；IDA 用 `seep_ida_status` + `idb_open`，任务目录用普通 `mkdir`。
 8. **跨进程 UI 工装集（可判定验收）**：
    - `tools/ui/abdump.ps1` —— 全量控件布局 + 文本字节 + 样式 dump
    - `tools/ui/linetest.ps1` —— `EM_GETLINECOUNT` 行数判定（LF vs CRLF 探针）

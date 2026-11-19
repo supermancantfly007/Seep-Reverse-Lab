@@ -5,10 +5,24 @@ description: |
 
   Ensure to use this skill when the user wants to analyze any binary file, regardless of whether they explicitly mention "IDA" or "reverse engineering". This includes requests like "看看这个exe", "分析这个dll", "帮我破解", "找一下密码", "这个软件怎么注册", etc.
 
-  Use the bundled scripts (scripts/start.ps1, scripts/open.ps1) for deterministic server management and file opening — do NOT write ad-hoc PowerShell commands for these operations.
+  默认链路（Mac/Linux 以及当前 Windows idalib）：先 `seep_ida_status`。`usable=true` 且 `status=Online` 即就绪；`legacy_port_13337=closed` 且 `transport` 为 `idalib-stdio` 是正常默认，禁止因此降级。打开文件用已注册的 ida MCP：`idb_open`（`mode=prefer_headless`）→ `list_funcs` / `decompile`。不要把「先跑 scripts/start.ps1 再轮询 127.0.0.1:13337」当成唯一步骤。
+  Windows 旧 HTTP 链路仍可用同目录 `scripts/start.ps1` 与 `scripts/open.ps1`，不要为此手写临时 PowerShell。
 ---
 
 # IDA Pro 逆向分析技能
+
+## 平台路径（先看这个）
+
+当前默认是 **idalib stdio**。Mac / Linux / 已接好 idalib 的 Windows 都走已注册的 ida MCP，不要先跑 `.ps1`，也不要轮询 `127.0.0.1:13337`。
+
+| 步骤 | 做什么 | 判据 / 调用 |
+|------|--------|-------------|
+| 1 | 判 IDA 是否就绪 | `seep_ida_status`。`usable=true` 且 `status=Online` 即可。`legacy_port_13337=closed` 且 `transport` 为 `idalib-stdio` 是正常默认，**禁止因此降级到 radare2**。只有 `usable=false`（Offline / Degraded）才改走 `seep_r2_*` |
+| 2 | 打开目标文件 | 已注册的 ida MCP：`idb_open(input_path, mode="prefer_headless")`。idalib 懒启动，不需要先开 GUI，也不要轮询 13337 |
+| 3 | 函数与反编译 | `list_funcs` → `decompile`（同一台 ida MCP 上的 xref 等工具随后） |
+| 4 | Windows 旧 HTTP 链路（可选） | 仅当本机仍在用 legacy GUI 插件、且明确要走 `scripts/start.ps1` + `scripts/open.ps1` 时。这不是 Unix 路径，也不是唯一步骤 |
+
+下面「已知问题」记的是旧 HTTP / OpenCode schema 坑，只在走 Windows `start.ps1` / `open.ps1` 时适用。`start.ps1` 里等待的是旧插件端口，**不是** idalib 的就绪判据。
 
 ## 已知问题与反思（必读）
 
@@ -57,14 +71,19 @@ description: |
 
 ### 工作流程原则
 
+默认走文首的 idalib stdio 路径：`seep_ida_status`（`usable=true` / `status=Online`）→ `idb_open`（`mode=prefer_headless`）→ `list_funcs` / `decompile`。
+
+仅 Windows 旧 HTTP 链路才用下面的脚本。不要把「先跑 `start.ps1` 再轮询 13337」当成所有平台的唯一步骤；13337 没监听不是降级条件。
+
 | 步骤 | 做什么 | 用什么 |
 |------|--------|--------|
-| 1 | 确保 HTTP 服务器在运行 | `scripts/start.ps1`（无参数） |
-| 2 | 打开目标二进制文件 | `scripts/open.ps1 -Path "xxx.exe"` |
-| 3 | 使用所有 72 个 MCP 工具 | 直接调用 `idapro_*` 工具 |
-| 4 | 分析完毕 | 工具自动可用 |
+| 1 | （仅 legacy HTTP）确保旧 MCP HTTP 服务器在运行 | `scripts/start.ps1`（无参数）。它等待的是旧插件端口，**不是** idalib 就绪条件 |
+| 2 | （仅 legacy HTTP）打开目标二进制文件 | `scripts/open.ps1 -Path "xxx.exe"` |
+| 3 | 使用 MCP 工具 | stdio：`list_funcs` / `decompile`；legacy HTTP：`idapro_*` |
 
 ## 脚本资源
+
+以下两个脚本只服务于 **Windows 旧 HTTP 链路**。Mac/Linux 不要跑它们。
 
 ### start.ps1 — 启动 MCP HTTP 服务器
 
@@ -131,6 +150,8 @@ ERR:open_timeout_600s
 
 ## 核心工具列表
 
+已注册的 ida MCP（idalib stdio）工具名**不带** `idapro_` 前缀：打开用 `idb_open`，枚举用 `list_funcs`，反编译用 `decompile`。下面清单里的 `idapro_*` 是旧 HTTP 桥接名，仅 Windows legacy 链路；stdio 上用去掉前缀的同名工具。
+
 ### 概况分析（第一步）
 - `idapro_survey_binary(detail_level="minimal")` — 快速概况：函数数、字符串、段、入口点、导入分类（加密/网络/文件IO）
 - `idapro_list_funcs(queries)` — 列出函数（分页、按名称过滤）
@@ -196,7 +217,7 @@ ERR:open_timeout_600s
 - 调试器工具默认隐藏，可通过 URL 参数 `?ext=dbg` 启用
 
 ### 会话管理
-- `idapro_idalib_open(input_path)` — ⚠️ 有 schema 校验 BUG，改用 `open.ps1` 脚本
+- `idapro_idalib_open(input_path)` — ⚠️ 旧 HTTP 桥有 schema 校验 BUG。stdio 用 `idb_open`（`mode=prefer_headless`）；只有 Windows 旧 HTTP 链路才改用 `open.ps1`
 - `idapro_idalib_list()` — 列出所有 session
 - `idapro_idalib_current()` — 当前上下文绑定的 session
 - `idapro_idalib_switch(session_id)` — 切换到其他 session
@@ -213,21 +234,44 @@ ERR:open_timeout_600s
 
 ## 逆向分析完整工作流
 
-### Step 1: 启动服务器
-确保 HTTP 服务在后台运行。
+### Step 1: 确认 IDA 就绪（所有平台）
+
+调用 `seep_ida_status`。
+
+- `usable=true` 且 `status=Online` → 继续，不要再启动别的服务器
+- `legacy_port_13337=closed` 且 `transport` 为 `idalib-stdio` → **正常**。禁止因此降级到 radare2，禁止改去轮询 `127.0.0.1:13337`
+- 只有 `usable=false`（Offline / Degraded）才改走 `seep_r2_*`
+
+Windows 若明确要走旧 HTTP 插件而不是 idalib，才额外执行：
+
 ```
 powershell -File "scripts/start.ps1"
 ```
-输出 `OK:72` 表示就绪。
+
+输出 `OK:72` 只表示旧 HTTP 服务器起来了，不能反过来用 13337 是否监听判断 idalib。
 
 ### Step 2: 打开文件
+
+已注册的 ida MCP（Mac/Linux，以及默认的 Windows idalib）：
+
+```
+idb_open(input_path="/path/to/target", mode="prefer_headless")
+```
+
+随后 `list_funcs`，再 `decompile`。不需要先开 GUI，也不要轮询 13337。
+
+Windows 旧 HTTP 链路仍可用：
+
 ```
 powershell -File "scripts/open.ps1" -Path "C:\目标.exe" -TimeoutSeconds 600
 ```
+
 输出 `OK:文件名:session_id` 表示成功（后带 `(temp copy)` 表示自动降级到临时副本）。
-若分析时间较长，会周期性输出 `INFO:opening:...`；若达到超时则输出 `ERR:open_timeout_xxs`。
+若分析时间较长，会周期性输出 `INFO:opening:...`；若达到超时则输出 `ERR:open_timeout_xxs`。这里的轮询是 `open.ps1` 等待打开结果，不是去探 13337。
 
 ### Step 3: 全局概览
+
+stdio 链路上打开成功后先 `list_funcs`，再对关键地址 `decompile`。需要概况时再用 `survey_binary`（legacy HTTP 名为 `idapro_survey_binary`）。
 ```
 idapro_survey_binary(detail_level="minimal")
 ```
@@ -273,6 +317,6 @@ idapro_rename(batch={"func": [{"addr": "函数地址", "name": "有意义的名�
 5. **遇到混淆代码** — 先做字符串解密、导入哈希去除、控制流平坦化去除等预处理
 6. **C++ STL 代码** — 用 FLIRT/Lumina 识别库函数后，再分析业务逻辑
 7. **不要暴力破解** — 分析应从反汇编中推导解决方案，用简单 Python 辅助计算
-8. **遇到 "No database bound"** — 还没有打开任何二进制文件，先执行 `open.ps1`
-9. **遇到 "Failed to open database"** — 可能是旧数据库文件被锁，`open.ps1` 会自动降级到 Temp 副本（输出含 `(temp copy)` 标记）
-10. **带自动分析打开 GUI/复杂样本时** — 默认加 `-TimeoutSeconds 600`，不要把长时间 `INFO:opening:...` 误判成脚本卡死
+8. **遇到 "No database bound"** — 还没有打开任何二进制文件。stdio 先 `idb_open(..., mode="prefer_headless")`；只有 Windows 旧 HTTP 链路才执行 `open.ps1`
+9. **遇到 "Failed to open database"** — 可能是旧数据库文件被锁。Windows 旧 HTTP 链路上 `open.ps1` 会自动降级到 Temp 副本（输出含 `(temp copy)` 标记）
+10. **带自动分析打开 GUI/复杂样本时** — Windows 旧 HTTP 的 `open.ps1` 默认加 `-TimeoutSeconds 600`，不要把长时间 `INFO:opening:...` 误判成脚本卡死。这不是去轮询 13337

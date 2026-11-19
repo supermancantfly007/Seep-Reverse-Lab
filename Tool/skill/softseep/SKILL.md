@@ -165,7 +165,7 @@ metadata:
 | **MCP** | **seep**（38 工具） | `seep_r2_*` / `seep_pe_*` / `seep_apk_*` / `seep_web_*` / `seep_hls_*` / `seep_cms_*` / `seep_kb_*` | 二进制 + **PE 引擎** + APK + **Web/流媒体** + 知识库 |
 | | **ida**（~243 工具） | `mcp_ida_*` | 深度反编译 / 交叉引用 |
 | | **playwright** | 浏览器工具 | Web / JS 审计 |
-| **脚本** | `Tool/scripts/` | `case-init.ps1` / `trigger_ida_mcp.ps1` / `refresh-tool-index.ps1` | 建档 / IDA 唤醒 / 自检 |
+| **脚本** | `Tool/scripts/` | `case-init.ps1` / `trigger_ida_mcp.ps1` / `refresh-tool-index.ps1` | 建档 / IDA 唤醒 / 自检（Windows）。Mac/Linux 上 `case-init.ps1`、`trigger_ida_mcp.ps1` 不要跑；IDA 用 `seep_ida_status` + `idb_open`，任务目录用普通 `mkdir` |
 | | `Tool/scripts/apk/` | `decode.ps1` / `rebuild-sign-install.ps1` / `frida-run.ps1` | APK 三件套 |
 | | **`exe-reverse/scripts/`** | 优先走 MCP：`seep_pe_triage` / `seep_pe_aob_scan` / `seep_pe_diff` / `seep_pe_patch`；其余 `doctor.py` / `fold.py` 直接跑 | **PE 体检 / 等长补丁 / 特征码 / 差分 / 大输出摘要** |
 | **知识库** | reverselab | `Tool/reverselab/kb/`（316 文件） | 攻防方法论 |
@@ -178,7 +178,7 @@ metadata:
 - **门禁引用必须带层前缀**：`AUTH-G0…G4` / `APK-G1…G4` / `EXE-G1…G5`（见 `references/gate-crosswalk.md`）
 - **Windows 深水区任务，第一条命令是 `python scripts/doctor.py`**（`EXE-G2`：先探主机，不许假设）
 - 知识库查询 → `seep_kb_search` → `seep_kb_read`
-- 任务建档 → `case-init.ps1`
+- 任务建档 → Windows：`case-init.ps1`。Mac/Linux 上 `case-init.ps1`、`trigger_ida_mcp.ps1` 不要跑；IDA 用 `seep_ida_status` + `idb_open`，任务目录用普通 `mkdir`
 - 报告生成 → `seep_gen_security_report` / `project-paradigms.md` 报告模板
 
 ### 调度纪律（四条）

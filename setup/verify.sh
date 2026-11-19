@@ -314,8 +314,7 @@ check_optn "能力" "Web 取证 (ffmpeg + ffprobe)" "缺 ffmpeg/ffprobe；补全
 check_optn "能力" "Android 动态 (frida + objection)" "补全: ./setup/install-capabilities.sh --only android" test_cap_all frida objection
 check_optn "能力" "加固指纹 (apkid)" "补全: ./setup/install-capabilities.sh --only android" test_cap_all apkid
 check_optn "能力" "扫描器（可选: nuclei + ffuf）" "补全: ./setup/install-capabilities.sh --only scanners" test_cap_all nuclei ffuf
-# aotopsy 是 Windows PE 单文件，Unix 上预期缺失 —— 固定判为「不适用」，不计失败
-check_optn "能力" "Flutter AOT (aotopsy，Windows-only)" "Unix 上不适用：aotopsy.exe 为 Windows PE；用 apktool 解包后交给 r2/IDA" false
+check_optn "能力" "Flutter AOT (aotopsy)" "未安装，补全: ./setup/install-capabilities.sh --only aotopsy" test_cap_all aotopsy
 
 # 外部工具定位统一走 setup/tool-registry.json —— 与 Windows 侧 resolve-tools.ps1 同一份规则，
 # 不再写死任何安装路径，也不是写死 false 的占位。
