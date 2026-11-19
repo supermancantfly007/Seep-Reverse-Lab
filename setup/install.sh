@@ -7,6 +7,7 @@
 #   2. 解压离线依赖 + 赋执行权限
 #   3. 安装 Python mcp 协议库（PEP 668 兜底）
 #   4. 备份 + 安全增量合并 ~/.pi/agent/mcp.json（不再整体覆盖）
+#      合并之后调用 install-ida.py（没有 IDA 不算失败，不计入 FAILED）
 #   5. 同步技能（先删后拷）/ 提示词 / 扩展
 #   6. 生成 DSH 配置（cordis.generated.yml / AGENTS.md）
 #   7. 可选：补齐外部能力包
@@ -175,6 +176,21 @@ if [ "$SKIP_PI" = 0 ]; then
     fi
 else
     info "已跳过 --skip-pi"
+fi
+
+# IDA 可选。必须在 mcp.json 合并之后；找不到或本步失败都不计入 FAILED。
+if [ "$SKIP_PI" = 0 ]; then
+    ida_py="$SCRIPT_DIR/install-ida.py"
+    if [ -f "$ida_py" ]; then
+        info "探测 IDA Pro 并增量写入 mcp.json（未安装只警告，不中断部署）"
+        if SEEP_AGENT_DIR="$AGENT_DIR" "$PY_BIN" "$ida_py"; then
+            ok "IDA 配置步骤结束"
+        else
+            warn "IDA 配置步骤异常（已忽略，不中断部署）"
+        fi
+    else
+        warn "缺少 setup/install-ida.py，跳过 IDA 自动配置"
+    fi
 fi
 
 # ---------------------------------------------------------------- 5. 技能与提示词

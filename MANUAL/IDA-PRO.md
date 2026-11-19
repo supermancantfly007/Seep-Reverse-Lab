@@ -62,6 +62,52 @@ IDA 9.4+ 把 MCP 服务做成了可独立运行的 `idalib` 模块，由 supervi
 > 不确定用哪种？直接跑 `powershell -File .\setup\install-ida.ps1`，脚本会自动判定并打印
 > 实际选用的模式（`配置为 IDA 原生模块运行模式` 或 `配置为 server.py 脚本模式`）。
 
+### macOS / Linux（`install.sh`）
+
+上面的 PowerShell 流程只覆盖 Windows。macOS / Linux 不要照搬 `ida.exe` 或 `13337`。
+
+`./setup/install.sh` 在安全合并 `~/.pi/agent/mcp.json` **之后**会调用 `setup/install-ida.py`。
+IDA 是商业软件，仓库不随包分发。**找不到 IDA 只打印警告，退出码为 0**，不会让整次安装失败，也不会记入安装失败列表。没有授权时继续用内置 Radare2。
+
+探测顺序：
+
+1. `--ida-root`，其次环境变量 `SEEP_IDA_ROOT`
+2. `setup/tool-registry.json` 里 `id` 为 `ida` 的 `candidates`（含 `/Applications/IDA Professional 9.x.app`）
+
+命中后写入的 **IDADIR** 不是 `.app` 根目录：
+
+| 系统 | IDADIR | 该目录里必须同时有 |
+| :--- | :--- | :--- |
+| macOS | `<IDA Professional 9.x.app>/Contents/MacOS` | `ida` 或 `idat`，以及 `libidalib.dylib` |
+| Linux | 安装目录本身（你指向的那一层） | `ida` 或 `idat`，以及 `libidalib.so` |
+
+`idalib-mcp` 的选用顺序：已经存在的 `~/.pi/agent/ida-mcp-venv/bin/idalib-mcp`，否则 `PATH` 上的 `idalib-mcp`。两个都没有、且 IDA 本体已经找到时，才在该 venv 里安装 `ida-pro-mcp`。安装失败只警告，**不会把一个不存在的 command 写进 mcp.json**。
+
+写入形状是 stdio，懒启动，**不要**写 `13337`：
+
+```json
+"ida": {
+  "command": "<ida-mcp-venv/bin/idalib-mcp 或 PATH 上的 idalib-mcp>",
+  "args": ["--stdio"],
+  "env": {
+    "PYTHONIOENCODING": "utf-8",
+    "IDADIR": "<上面的 IDADIR>"
+  },
+  "transport": "stdio",
+  "lifecycle": "lazy",
+  "requestTimeoutMs": 180000
+}
+```
+
+增量规则与 Windows 一致：**不覆盖**已经加过的其它 MCP。若 `ida` 条目已在，且原来的 `command` 文件还在，就保留你改过的 command，只补上缺失的 `env.IDADIR`；只有 command 已经丢了，才换成上面的 stdio 条目。
+
+可用 `SEEP_AGENT_DIR`（或 `--agent-dir`）指向别的 agent 目录。测试时不要写到真实的 `~/.pi/agent`。手工重跑：
+
+```bash
+python3 setup/install-ida.py
+python3 setup/install-ida.py --ida-root "/Applications/IDA Professional 9.0.app"
+```
+
 #### DSH 风格的配置示例
 
 ```yml
