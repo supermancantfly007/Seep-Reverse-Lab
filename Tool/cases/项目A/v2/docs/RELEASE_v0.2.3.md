@@ -66,5 +66,5 @@ Lifetime License Enterprise
 官方试用态 (状态字=0xFFFF, 零残留)  ✅ 可逆、无污染
 ```
 
-复现证据链：`project/xyplorer/docs/repro/`（`target_info.txt` / `repro_steps.md` / `repro_run_1,2.log` /
+复现证据链：`项目A/v2/docs/repro/`（`target_info.txt` / `repro_steps.md` / `repro_run_1,2.log` /
 `diff_before_after.txt` / `effect_proof_about_1,2.png` / `revert_verify.log`）

@@ -420,11 +420,15 @@ test_generated_untracked() {
 }
 check_item "脱敏" "含本机路径的生成物未被 git 追踪" test_generated_untracked
 
+# 叙述性产品名必须为 0。案例 README 声明「保留原文」的功能性域名不计入：
+# 项目N 的 boosterx.org（协议端点，删掉就无法复现）。
 test_no_product_names() {
-    ! grep -rIlE 'xyplorer|bandizip|boosterx|1218\.io' "$TOOL_DIR/cases" 2>/dev/null | grep -q .
+    local hits
+    hits=$(grep -rInE 'xyplorer|bandizip|boosterx|1218\.io' "$TOOL_DIR/cases" 2>/dev/null \
+        | grep -vE 'boosterx(\.|\\\.)org' || true)
+    [ -z "$hits" ]
 }
-check_optn "脱敏" "目标产品名残留统计 (功能性标识符可保留)" \
-    "存在目标产品名（含 README 已声明的功能性必需标识符）；如为叙述性提及请脱敏" test_no_product_names
+check_item "脱敏" "目标产品名零残留（已声明的功能性域名除外）" test_no_product_names
 
 echo -e "\n${CYAN}================================================================================${RESET}"
 echo -e "  [体检报告] 核心检查通过: ${GREEN}$OK_COUNT${RESET} 项 | 异常阻断: ${RED}$FAIL_COUNT${RESET} 项 | 关注项: ${YELLOW}$OPTN_COUNT${RESET} 项"

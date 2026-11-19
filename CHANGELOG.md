@@ -20,6 +20,7 @@
 - `setup/verify.sh` 选 Python 的顺序与 `verify.ps1` 对齐：先 `SEEP_PYTHON`，再 `~/.pi/agent/seep-venv`，最后才是 PATH。macOS 自带的 `/usr/bin/python3` 不再把已装好的 mcp 报成缺失。
 - `DSH-PROFILE.md` 的平台边界改成 Web 走 `web.py`、aotopsy 认本机可执行文件。
 - 已安装的 aotopsy 会从 `Tool/aotopsy` 同步 `ida_scripts` / `ghidra_scripts` 到二进制旁边和 `~/.aotopsy/`，供 `aotopsy ida` / `aotopsy ghidra` 发现。
+- 案例里的叙述性产品名已去掉（`xyplorer` 路径与补丁文件名、`1218.io` 购买页）。项目N 的 `boosterx.org` 仍按 README 保留。体检这项改为通过/阻断，不再是黄字。
 
 ### 变更
 

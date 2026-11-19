@@ -43,5 +43,5 @@
 ## D. 安装目录文件差分
 
 补丁前: 官方 version.dll（若存在）
-补丁后: version.dll（PoC 代理，257,024 字节） + xyplorer_patch.ini + version_poc.log
+补丁后: version.dll（PoC 代理，257,024 字节） + 项目A_patch.ini + version_poc.log
 还原后: 全部删除，无残留

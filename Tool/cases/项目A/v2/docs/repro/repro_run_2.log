@@ -8,7 +8,7 @@
   版本: 28.40.0100 (x64, twinBASIC 982)
   SHA256: e2b134e9b7e68886d59f005152ae2f339cdf20159ede00cb37fda0f6fda06ccd
   体积: 39306808 字节
-  PoC: <工作区>/project/xyplorer\dist\version.dll  (257024 字节, sha256=cc428f85e55ef12d53302696c6f76d74aa364e0d3214da3a0b36bdb128cb8391)
+  PoC: <工作区>/项目A/v2\dist\version.dll  (257024 字节, sha256=cc428f85e55ef12d53302696c6f76d74aa364e0d3214da3a0b36bdb128cb8391)
   补丁点: 0x670CB1 / 0x670BFF / 0x670CD5 (激活状态机) + 0x15E2A47 (许可等级呈现)
   状态字 RVA: 0x0230CDEA   试用=0xFFFF / 已激活=0x0000
 
@@ -33,7 +33,7 @@
     授权密钥 = 'xy05-0100-D0F0-3970-185A-1963-A172-D0F0-28.40'
     窗口 [ThunderRT6FormDC] <USER>\Desktop\pi\seep\project - <项目A> 28.40.0100
     窗口 [ThunderRT6Main] <项目A>
-    关于框截图 -> <工作区>/project/xyplorer\docs\repro\effect_proof_about_2.bmp
+    关于框截图 -> <工作区>/项目A/v2\docs\repro\effect_proof_about_2.bmp
   判定: 激活状态字归零=True   标题栏无试用标记=True
 
 [阶段 5] 稳定性观察 30s

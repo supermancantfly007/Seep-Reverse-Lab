@@ -13,7 +13,7 @@ Get-FileHash 'D:\Data\<项目A>\<项目A>.exe' -Algorithm SHA256
 ## 1. 一键全流程复现（推荐）
 
 ```bash
-cd project/xyplorer
+cd 项目A/v2
 PYTHONIOENCODING=utf-8 python tools/repro_v240.py 1
 PYTHONIOENCODING=utf-8 python tools/repro_v240.py 2
 ```
@@ -27,7 +27,7 @@ PYTHONIOENCODING=utf-8 python tools/repro_v240.py 2
 ```powershell
 Stop-Process -Name <项目A>,<项目A>copy,Uninstall -Force -EA SilentlyContinue
 Remove-Item 'D:\Data\<项目A>\version.dll' -Force -EA SilentlyContinue
-Remove-Item 'D:\Data\<项目A>\xyplorer_patch.ini' -Force -EA SilentlyContinue
+Remove-Item 'D:\Data\<项目A>\项目A_patch.ini' -Force -EA SilentlyContinue
 Remove-Item 'D:\Data\<项目A>\version_poc.log' -Force -EA SilentlyContinue
 # [Register] 段复位（Name= / Code= / dc=0）
 ```
@@ -40,7 +40,7 @@ Start-Process 'D:\Data\<项目A>\<项目A>.exe'
 
 ### 2.3 部署 PoC
 ```powershell
-Copy-Item project\xyplorer\dist\version.dll 'D:\Data\<项目A>\version.dll' -Force
+Copy-Item 项目A\v2\dist\version.dll 'D:\Data\<项目A>\version.dll' -Force
 # 写入 [Register] 结构化授权码（见 diff_before_after.txt 段 C）
 ```
 
@@ -62,7 +62,7 @@ Start-Process 'D:\Data\<项目A>\<项目A>.exe'
 
 ### 2.5 彻底还原
 ```powershell
-# 关闭进程 → 删除 version.dll / xyplorer_patch.ini / version_poc.log
+# 关闭进程 → 删除 version.dll / 项目A_patch.ini / version_poc.log
 # 由 .seep.bak 恢复 [Register] 段
 ```
 

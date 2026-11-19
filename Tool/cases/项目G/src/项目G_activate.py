@@ -11,9 +11,9 @@
     isLicensed(void) 恒 true -> 启动走 "checkLicense pass"（frida 分支 hook 双向实测）。
 
 支持正版: 项目G 是商业软件，请通过官方渠道购买授权。
-  官方站点: https://1218.io/
-  购买页(中): https://1218.io/项目G/fwd_cn/order.html
-  购买页(EN): https://1218.io/项目G/fwd/order.html
+  官方站点: https://example.invalid/
+  购买页(中): https://example.invalid/项目G/fwd_cn/order.html
+  购买页(EN): https://example.invalid/项目G/fwd/order.html
 
 用法:
   一键激活项目G.exe                       # 自动定位 项目G 目录并激活
@@ -38,9 +38,9 @@ except ImportError:  # 非 Windows（如 CI lint）
 GUARD_RUN_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
 GUARD_VALUE = '项目GActivateGuard'
 
-OFFICIAL_SITE = 'https://1218.io/'
-BUY_URL_CN = 'https://1218.io/项目G/fwd_cn/order.html'
-BUY_URL_EN = 'https://1218.io/项目G/fwd/order.html'
+OFFICIAL_SITE = 'https://example.invalid/'
+BUY_URL_CN = 'https://example.invalid/项目G/fwd_cn/order.html'
+BUY_URL_EN = 'https://example.invalid/项目G/fwd/order.html'
 
 # 已知版本哈希（强校验）；未知构建走字节级检查兜底
 ORIG_SHA256 = '<实测哈希>'

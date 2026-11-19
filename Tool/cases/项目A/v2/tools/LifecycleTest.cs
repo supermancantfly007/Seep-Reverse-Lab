@@ -33,7 +33,7 @@ class LifecycleTest
             foreach (var x in l) Console.WriteLine("    " + x);
             Console.WriteLine("    >>> 部署 = " + ok);
             Console.WriteLine("    version.dll = " + File.Exists(Path.Combine(dir, "version.dll")) +
-                              " | xyplorer_patch.ini = " + File.Exists(Path.Combine(dir, "xyplorer_patch.ini")));
+                              " | 项目A_patch.ini = " + File.Exists(Path.Combine(dir, "项目A_patch.ini")));
         }
 
         if (stage == "revert" || stage == "all")

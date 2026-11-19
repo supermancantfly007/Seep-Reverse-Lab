@@ -31,8 +31,8 @@ $ok1 = $mod.GetMethod('DeployProxy').Invoke($null, @($dir, 'Seep 授权用户', 
 Show $l1
 Write-Host "    部署结果 = $ok1"
 $dllOk = Test-Path (Join-Path $dir 'version.dll')
-$iniOk = Test-Path (Join-Path $dir 'xyplorer_patch.ini')
-Write-Host "    version.dll = $dllOk | xyplorer_patch.ini = $iniOk"
+$iniOk = Test-Path (Join-Path $dir '项目A_patch.ini')
+Write-Host "    version.dll = $dllOk | 项目A_patch.ini = $iniOk"
 if (-not $dllOk -or -not $iniOk) { Write-Host "[-] 部署失败，终止"; exit 1 }
 
 # ── 阶段 2: 检测状态 ──
@@ -116,9 +116,9 @@ Write-Host "    还原结果 = $ok5"
 # ── 阶段 6: 还原后校验 ──
 Write-Host "`n=== 阶段 6: 还原后校验（应为 original + 无残留） ==="
 $dllLeft = Test-Path (Join-Path $dir 'version.dll')
-$iniLeft = Test-Path (Join-Path $dir 'xyplorer_patch.ini')
+$iniLeft = Test-Path (Join-Path $dir '项目A_patch.ini')
 $logLeft = Test-Path (Join-Path $dir 'version_poc.log')
-Write-Host "    version.dll 残留 = $dllLeft | xyplorer_patch.ini 残留 = $iniLeft | 日志残留 = $logLeft"
+Write-Host "    version.dll 残留 = $dllLeft | 项目A_patch.ini 残留 = $iniLeft | 日志残留 = $logLeft"
 $l6 = NewLog
 $st6 = $mod.GetMethod('CheckState').Invoke($null, @($dir, $l6))
 Show $l6

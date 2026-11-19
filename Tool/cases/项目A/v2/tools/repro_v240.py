@@ -239,7 +239,7 @@ def main():
     o = sh([os.path.join(ROOT, 'tools', 'XYLifecycleTest.exe'), DIR, 'revert'])
     for line in (o.stdout or '').splitlines():
         r.p('    ' + line)
-    left = [f for f in ('version.dll', 'xyplorer_patch.ini', 'version_poc.log') if os.path.exists(os.path.join(DIR, f))]
+    left = [f for f in ('version.dll', '项目A_patch.ini', 'version_poc.log') if os.path.exists(os.path.join(DIR, f))]
     r.p('    残留文件检查: %s' % ('无残留 ✓' if not left else str(left)))
 
     # ── 阶段 7: 回落校验 ──────────────────────────────

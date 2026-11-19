@@ -80,6 +80,6 @@ def test_version_detect():
 
 
 def test_support_links_present():
-    assert act.OFFICIAL_SITE == 'https://1218.io/'
+    assert act.OFFICIAL_SITE == 'https://example.invalid/'
     assert 'order.html' in act.BUY_URL_CN
     assert 'order.html' in act.BUY_URL_EN

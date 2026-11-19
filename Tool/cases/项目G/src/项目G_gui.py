@@ -68,7 +68,7 @@ class 项目GActivateApp(tk.Tk):
         links.pack(anchor='w', pady=(4, 0))
         ttk.Label(links, text='支持正版：', foreground='#b00').pack(side='left')
         for text, url in (
-                ('官方站点 https://1218.io', core.OFFICIAL_SITE),
+                ('官方站点 https://example.invalid', core.OFFICIAL_SITE),
                 ('购买·中文', core.BUY_URL_CN),
                 ('购买·EN', core.BUY_URL_EN)):
             b = ttk.Button(links, text=text, command=lambda u=url: webbrowser.open(u))

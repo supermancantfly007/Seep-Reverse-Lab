@@ -685,14 +685,17 @@ Test-CheckItem "脱敏" "含本机路径的生成物未被 git 追踪" {
     $true
 } "生成物含本机绝对路径或访问令牌，不应入库；请从索引移除并确认 .gitignore" "未被追踪" "git index"
 
-Test-ManualItem "脱敏" "目标产品名残留统计 (功能性标识符可保留)" {
+Test-CheckItem "脱敏" "目标产品名零残留（已声明的功能性域名除外）" {
     $cases = Join-Path $ToolDir 'cases'
     if (-not (Test-Path $cases)) { return $true }
     $names = 'xyplorer|bandizip|boosterx|1218\.io'
+    # 大小写敏感：XYplorer 代码符号是项目A README 声明保留的标识符，不在此模式里。
+    # boosterx.org 是项目N README 声明保留的协议端点。
     $hits = Get-ChildItem -Path $cases -Recurse -File -ErrorAction SilentlyContinue |
-            Select-String -Pattern $names -ErrorAction SilentlyContinue
+            Select-String -Pattern $names -CaseSensitive -ErrorAction SilentlyContinue |
+            Where-Object { $_.Line -notmatch 'boosterx(\.|\\\.)org' }
     -not $hits
-} "存在目标产品名（含 README 已声明的功能性必需标识符，如注册表路径 / API 域名 / 代码符号）；如为叙述性提及请脱敏" "零残留" "$cases"
+} "叙述性产品名未脱敏。项目N 的 boosterx.org 已声明为功能性域名，不计入" "零残留" "Tool/cases"
 
 # -----------------------------------------------------------------------------
 # 详细校对模式输出 (-Detailed / -Audit)
