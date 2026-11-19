@@ -26,7 +26,7 @@
 
 | 需要 | 最低 | 检查命令 | 说明 |
 | :--- | :--- | :--- | :--- |
-| 操作系统 | Windows 10 1809+ / Linux / macOS | — | Web 取证那 8 个工具是 PowerShell 实现，Unix 需装 `pwsh` |
+| 操作系统 | Windows 10 1809+ / Linux / macOS | — | 这 8 个 Web 取证工具由 `Tool/scripts/web/web.py` 驱动，macOS / Linux / Windows 一套，不需要 `pwsh` |
 | **Python** | 3.11+（**必须能 `import mcp`**） | `python -c "import mcp; print('ok')"` | seep 的 MCP 服务端靠它跑 |
 | **Node.js** | 18+ | `node -v` | js-reverse / playwright 这两个 MCP 靠它 |
 | **Java** | 11+ | `java -version` | jadx / apktool 反编译 APK 用 |
