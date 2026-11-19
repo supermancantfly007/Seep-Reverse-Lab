@@ -25,7 +25,11 @@ description: 【Web / 流媒体逆向与取证】当目标是一条 m3u8/HLS 播
 ## 二、四步法（不跳步）
 
 > **已代码化**：`web-gate.ps1` + `web-pipeline.ps1` 把下面的四步变成硬阶段门，
-> 前置产物缺失即 BLOCK。一键入口：
+> 前置产物缺失即 BLOCK。主入口与 MCP `_run_web_script` 相同，是 Python，**不要把 pwsh 当成必须**：
+> ```bash
+> python Tool/scripts/web/web.py web-pipeline.ps1 -Json -Url <target> -Authorized -Scope "<授权依据>"
+> ```
+> `<script>` 仍用分发器里的脚本名（`web-pipeline.ps1` 等）。Windows 上只有 `Tool/scripts/web/web.py` 缺失时才回退 PowerShell：
 > ```powershell
 > powershell -File Tool\scripts\web\web-pipeline.ps1 -Url <target> -Authorized -Scope "<授权依据>"
 > ```
@@ -78,14 +82,18 @@ description: 【Web / 流媒体逆向与取证】当目标是一条 m3u8/HLS 播
 
 | 目的 | 命令 |
 | :--- | :--- |
-| 首跑：确认工具箱就绪 | `powershell -File Tool\scripts\web\install-web-toolbox.ps1 -CheckOnly` |
-| HLS 取证 | `powershell -File Tool\scripts\web\hls-analyze.ps1 -Url <m3u8> -Referer <r> -UserAgent <ua>` |
-| 门槛定位 | `powershell -File Tool\scripts\web\http-replay.ps1 -Url <api>` 或 `-Curl "<浏览器复制>"` |
-| spider 提取 | `powershell -File Tool\scripts\web\spider-extract.ps1 -Path .\spider.jar` |
-| 站点指纹（CMS/影视源） | `powershell -File Tool\scripts\web\cms-fingerprint.ps1 -Url <站点>` |
+| 一键四步 | `python Tool/scripts/web/web.py web-pipeline.ps1 -Json -Url <target> -Authorized -Scope "<授权依据>"` |
+| HLS 取证 | `python Tool/scripts/web/web.py hls-analyze.ps1 -Json -Url <m3u8> -Referer <r> -UserAgent <ua>` |
+| 门槛定位 | `python Tool/scripts/web/web.py http-replay.ps1 -Json -Url <api>`，或再加 `-Curl "<浏览器复制>"` |
+| spider 提取 | `python Tool/scripts/web/web.py spider-extract.ps1 -Json -Path ./spider.jar` |
+| 站点指纹（CMS/影视源） | `python Tool/scripts/web/web.py cms-fingerprint.ps1 -Json -Url <站点>` |
 | 模板化漏扫 / 目录爆破 | `nuclei -u <url> -tags cms,exposure` · `ffuf -u <url>/FUZZ -w <字典>` |
-| 频控探测 | `http-replay.ps1 -Url <api> -RateTest 10` |
-| **JS 沙盒执行** | `node Tool\skill\webseep\scripts\sandbox-runner.js <target.js> --extract-cookie --verbose` |
+| 频控探测 | `python Tool/scripts/web/web.py http-replay.ps1 -Json -Url <api> -RateTest 10` |
+| **JS 沙盒执行** | `node Tool/skill/webseep/scripts/sandbox-runner.js <target.js> --extract-cookie --verbose` |
+
+`install-web-toolbox.ps1 -CheckOnly` 不在 `web.py` 分发器里，只作为 Windows 安装/自检回退。macOS/Linux 不要为了跑它去装 pwsh。分析命令一律走上面的 `python Tool/scripts/web/web.py <script> ...`。
+
+Windows 回退（仅当没有 `Tool/scripts/web/web.py`）：`powershell -File Tool\scripts\web\<script>.ps1 ...`。不要写成必须 `pwsh`。
 
 Agent 侧等价工具：`seep_hls_analyze` / `seep_http_replay` / `seep_spider_extract` / `seep_cms_fingerprint` / `seep_web_toolbox`。
 完整手册见 `Tool/docs/WEB-TOOLBOX.md`。
