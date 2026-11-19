@@ -2084,28 +2084,204 @@ def seep_auto_triage(target_path: str, task_name: Optional[str] = None) -> str:
     return json.dumps(triage_result, indent=2, ensure_ascii=False)
 
 
+def _probe_tcp(host: str, port: int, timeout: float = 0.8) -> bool:
+    import socket
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except Exception:
+        return False
+
+
+def _mcp_config_candidates() -> List[str]:
+    paths: List[str] = []
+    env_path = os.environ.get("SEEP_MCP_JSON", "").strip()
+    if env_path:
+        paths.append(os.path.expanduser(env_path))
+    paths.append(os.path.join(os.path.expanduser("~"), ".pi", "agent", "mcp.json"))
+    seen = set()
+    out: List[str] = []
+    for path in paths:
+        if path and path not in seen:
+            seen.add(path)
+            out.append(path)
+    return out
+
+
+def _read_json_object(path: str) -> Optional[dict]:
+    try:
+        with open(path, "r", encoding="utf-8-sig") as handle:
+            data = json.load(handle)
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _ida_server_entries(mcp: dict) -> List[Tuple[str, dict]]:
+    servers = mcp.get("mcpServers") or mcp.get("servers") or {}
+    if not isinstance(servers, dict):
+        return []
+    hits: List[Tuple[str, dict]] = []
+    for name, entry in servers.items():
+        if not isinstance(entry, dict):
+            continue
+        args = entry.get("args") or []
+        blob = " ".join([
+            str(name),
+            str(entry.get("command") or ""),
+            " ".join(str(arg) for arg in args),
+            json.dumps(entry.get("env") or {}, ensure_ascii=False),
+        ]).lower()
+        named = str(name).lower() in {"ida", "idapro", "ida-pro", "ida_pro"}
+        if named or any(key in blob for key in ("idalib", "ida_pro_mcp", "ida-pro-mcp")):
+            hits.append((str(name), entry))
+    return hits
+
+
+def _command_exists(command: str) -> bool:
+    if not command:
+        return False
+    if os.path.isfile(command):
+        return True
+    return shutil.which(command) is not None
+
+
+def _ida_install_ok(path: str) -> bool:
+    if not path:
+        return False
+    root = os.path.expanduser(path)
+    candidates = [root, os.path.join(root, "Contents", "MacOS")]
+    names = (
+        "ida", "ida.exe", "ida64", "ida64.exe",
+        "idat", "idat.exe", "idat64", "idat64.exe",
+    )
+    libs = ("libidalib.dylib", "libidalib.so", "idalib.dll", "ida.dll", "ida64.dll")
+    for candidate in candidates:
+        if not os.path.isdir(candidate):
+            continue
+        if any(os.path.isfile(os.path.join(candidate, name)) for name in names + libs):
+            return True
+    return False
+
+
+def _ida_endpoint(config_path: str, name: str, entry: dict) -> dict:
+    command = str(entry.get("command") or "")
+    args = [str(arg) for arg in (entry.get("args") or [])]
+    env = entry.get("env") if isinstance(entry.get("env"), dict) else {}
+    idadir = str((env or {}).get("IDADIR") or "")
+    joined = " ".join([command, *args]).lower()
+    if "idalib" in joined:
+        mode = "idalib-stdio"
+    elif "server.py" in joined or "ida_pro_mcp" in joined:
+        mode = "ida-pro-mcp"
+    else:
+        mode = "mcp-config"
+    return {
+        "config": config_path,
+        "server": name,
+        "command": command,
+        "args": args,
+        "command_exists": _command_exists(command),
+        "idadir": idadir,
+        "install_ok": _ida_install_ok(idadir) if idadir else False,
+        "transport": str(entry.get("transport") or "stdio"),
+        "mode": mode,
+    }
+
+
+def _endpoint_usable(endpoint: dict) -> bool:
+    if not endpoint.get("command_exists"):
+        return False
+    if endpoint.get("idadir") and not endpoint.get("install_ok"):
+        return False
+    return True
+
+
+def _collect_ida_status(
+    config_paths: Optional[List[str]] = None,
+    legacy_listening: Optional[bool] = None,
+) -> dict:
+    """IDA 就绪判定。
+
+    13337 只代表旧版 GUI 插件。idalib / ida_pro_mcp 走 stdio，
+    端口没人听不得判成 Offline。
+    """
+    legacy_up = (
+        _probe_tcp("127.0.0.1", 13337)
+        if legacy_listening is None
+        else bool(legacy_listening)
+    )
+    endpoints: List[dict] = []
+    for path in (config_paths if config_paths is not None else _mcp_config_candidates()):
+        data = _read_json_object(path)
+        if not data:
+            continue
+        for name, entry in _ida_server_entries(data):
+            endpoints.append(_ida_endpoint(path, name, entry))
+
+    usable = [item for item in endpoints if _endpoint_usable(item)]
+    legacy_state = "listening" if legacy_up else "closed"
+    legacy_note = "13337 仅表示旧版 GUI 插件。idalib --stdio 不占用该端口，关闭是正常状态。"
+
+    if legacy_up or usable:
+        if usable and legacy_up:
+            transport = usable[0]["mode"] + "+gui-plugin-13337"
+        elif usable:
+            transport = usable[0]["mode"]
+        else:
+            transport = "gui-plugin-13337"
+        message = "IDA 可用。直接调用已注册的 ida MCP（idb_open / list_funcs / decompile）。"
+        if not legacy_up:
+            message += (
+                " 127.0.0.1:13337 未监听是 idalib stdio 的正常状态，不是故障；"
+                "不要因此判定 IDA 不可用，也不要仅凭该端口改走 radare2。"
+            )
+        else:
+            message += " 旧插件端口 127.0.0.1:13337 也在监听。"
+        return {
+            "status": "Online",
+            "usable": True,
+            "transport": transport,
+            "legacy_port_13337": legacy_state,
+            "legacy_port_note": legacy_note,
+            "endpoints": usable or endpoints,
+            "message": message,
+        }
+
+    if endpoints:
+        return {
+            "status": "Degraded",
+            "usable": False,
+            "transport": "unusable",
+            "legacy_port_13337": legacy_state,
+            "legacy_port_note": legacy_note,
+            "endpoints": endpoints,
+            "message": "mcp.json 里有 ida 条目，但启动命令不存在或 IDADIR 无效。修好之前用 seep_r2_*。",
+            "hint": "检查 ~/.pi/agent/mcp.json 的 ida.command 与 env.IDADIR，或重跑 setup/install-ida.ps1。",
+        }
+
+    return {
+        "status": "Offline / Unreachable",
+        "usable": False,
+        "transport": "none",
+        "legacy_port_13337": legacy_state,
+        "legacy_port_note": legacy_note,
+        "message": "未发现可用的 IDA MCP（13337 未监听，且 mcp.json 没有可用的 idalib/ida_pro_mcp 条目）。",
+        "hint": "未装或未接线时用 seep_r2_*。接线：setup/install-ida.ps1。",
+    }
+
+
 @server.tool()
 def seep_ida_status() -> str:
     """
-    检查本地 IDA Pro 逆向分析服务与 MCP 桥接器是否在线就绪。
-    探测端口 127.0.0.1:13337。
+    检查本地 IDA Pro 是否可用。
+
+    同时看两条链路：旧版 GUI 插件端口 127.0.0.1:13337，以及
+    mcp.json 里的 idalib-mcp / ida_pro_mcp stdio。
+    13337 没监听不等于 IDA 不可用；stdio 链路就绪时 status 仍为 Online。
+    只有 usable=false 时才降级到 seep_r2_*。
     """
-    import urllib.request
-    url = "http://127.0.0.1:13337"
-    try:
-        req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=2) as resp:
-            return json.dumps({
-                "status": "Online",
-                "code": resp.status,
-                "message": "IDA Pro MCP 服务正在稳定运行！可直接调用 mcp_ida_* 工具链展开反编译与交叉引用深度分析。"
-            }, indent=2, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({
-            "status": "Offline / Unreachable",
-            "detail": str(e),
-            "hint": "若需使用 IDA 深度分析，请在 IDA Pro GUI 中确认插件已加载，或按下 Ctrl+Alt+M 唤醒。"
-        }, indent=2, ensure_ascii=False)
+    return json.dumps(_collect_ida_status(), indent=2, ensure_ascii=False)
 
 
 @server.tool()

@@ -15,7 +15,7 @@ Seep Lab经过跨平台路径与工具抽象后，对不同操作系统具备分
 | **Web / 流媒体取证工具链**（8 个 `seep_web_*`） | 🟢 **Python 引擎** | 🟢 **Python 引擎** | 🟢 Python 引擎 | `Tool/scripts/web/web.py`，不再依赖 PowerShell；HLS 实解另需 ffmpeg/ffprobe |
 | **Flutter / Dart AOT**（`seep_aotopsy`） | 🔴 **不支持** | 🔴 **不支持** | 🟢 原生支持 | `aotopsy.exe` 是 Windows PE 单文件；Unix 请用 apktool 解包后交给 r2/IDA |
 | **跨平台二进制分析 (seep)** | 🟢 **原生支持** (系统r2) | 🟢 **原生支持** (系统r2) | 🟢 内置r2.exe | Radare2 自动探测系统 `radare2` / `rabin2` / `rasm2` |
-| **IDA Pro 自动化联动** | 🟡 **需本地 Mac 版 IDA** | 🟡 **需本地 Linux 版 IDA** | 🟢 内置脚本探测 | 均通过 13337 端口 MCP 通用协议直连 |
+| **IDA Pro 自动化联动** | 🟡 **需本地 Mac 版 IDA** | 🟡 **需本地 Linux 版 IDA** | 🟢 内置脚本探测 | idalib / ida_pro_mcp 走 stdio。13337 只是旧 GUI 插件，没监听不等于不可用 |
 | **Windows PE 客户端逆向** | 🟡 **交叉静态分析** | 🟡 **交叉静态分析** | 🟢 本地动态执行 | 在 Mac/Linux 下使用 R2/Ghidra 提取逻辑，或使用 Wine/虚拟机 |
 | **Linux ELF / macOS Mach-O** | 🟢 **Mach-O 专属** | 🟢 **ELF 原生专属** | 🟡 交叉静态 | 支持本地无缝调试、动态 Hook 与符号导出 |
 

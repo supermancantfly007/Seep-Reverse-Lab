@@ -24,8 +24,7 @@ IDA Pro **8.4+ / 9.x**（含 Hex-Rays 反编译器）
 3. **运行 `install.ps1`** —— 它会自动探测 IDA 路径并写入 `mcp.json`。
    若探测失败，手工填 `~/.pi/agent/mcp.json`（见下方【两种运行模式】）。
 
-4. **使用方式**：在 pi 里说「用 IDA 分析这个文件」，`ida-reverse` Skill 会自动唤醒 IDA 并挂载 MCP
-   （轮询 `http://127.0.0.1:13337` 就绪）。
+4. **使用方式**：在 pi 里说「用 IDA 分析这个文件」。idalib / `ida_pro_mcp` 走 stdio，懒启动，**不要**用 `127.0.0.1:13337` 判断是否就绪。先看 `seep_ida_status`：`usable=true` 即可 `idb_open`。
 
 ### 两种运行模式（IDA 9.x 起）
 

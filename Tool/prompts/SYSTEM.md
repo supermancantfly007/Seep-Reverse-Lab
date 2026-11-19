@@ -220,22 +220,23 @@ seep_kb_search(query="信号描述")  或  reverselab/kb 全文检索
 | 工具 | 检测什么 |
 | :--- | :--- |
 | `seep_status` | radare2 / jadx / apktool / 知识库 就绪状态 |
-| `seep_ida_status` | IDA MCP 是否可用 |
+| `seep_ida_status` | IDA 是否可用。`usable=true` 即可调用；`legacy_port_13337=closed` 不是故障 |
 
 ### IDA Pro 联动（仅在装了 IDA 时适用）
 
 当用户提及"用 IDA 分析 X"或给出 ELF/PE/SO/DLL 时：
 
 1. **定位目标文件**（.exe / .dll / .so / .elf）
-2. **读取 IDA 路径** —— 从 `~/.pi/agent/mcp.json` 的 `mcpServers.ida.command` 解析出
-   IDA Python 路径，反推 IDA 安装目录。**严禁硬编码路径**（每台机器安装位置不同）
-3. **唤醒 IDA** 并以命令行参数挂载目标文件
-4. **轮询就绪** —— 检测 IDA MCP 服务端口（默认 `127.0.0.1:13337`，以 mcp.json 配置为准）
-5. **走 ida MCP 分析链** —— 函数枚举 → 反编译 → 交叉引用 → 关键路径提取
+2. **读取 IDA 路径** —— 从 `~/.pi/agent/mcp.json` 的 `mcpServers.ida` 读取 `command` 与 `env.IDADIR`。**严禁硬编码路径**（每台机器安装位置不同）
+3. **判就绪** —— 调用 `seep_ida_status`。`usable=true`（`status=Online`）就走 ida MCP。
+   `legacy_port_13337=closed` 且 `transport` 为 `idalib-stdio` 是当前默认链路，**不是故障**。
+   禁止仅因 13337 没监听就降级到 radare2。只有 `usable=false`（Offline / Degraded）才走 `seep_r2_*`
+4. **打开并分析** —— `idb_open` 挂载目标文件，再函数枚举 → 反编译 → 交叉引用。idalib 走 stdio、懒启动，不需要先开 GUI，也不要轮询 13337
 
 ### 未装 IDA 时的降级路线（不阻塞任务）
 
-> **原则**：IDA 不可用时**不阻塞、不报错**，直接用 `seep_r2_*` 继续推进，
+> **原则**：只有 `seep_ida_status` 返回 `usable=false` 时才算 IDA 不可用。13337 没监听不算。
+> 不可用时**不阻塞、不报错**，直接用 `seep_r2_*` 继续推进，
 > 并在报告中标注"未使用 IDA 反编译器，伪代码质量受限"。
 
 | 需求 | seep MCP 替代 |
