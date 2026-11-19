@@ -1297,7 +1297,11 @@ def seep_aotopsy(target_path: str, action: str = "find-libapp", keyword: Optiona
         return f"[ERROR]: Target file does not exist: {target_path}"
     exe = _resolve_android_tool("aotopsy")
     if not exe:
-        return "[ERROR]: Aotopsy 未部署。请运行 Tool/scripts/android/install-android-toolbox.ps1 -Only aotopsy"
+        return (
+            "[ERROR]: Aotopsy 未部署。"
+            " Windows: Tool/scripts/android/install-android-toolbox.ps1 -Only aotopsy"
+            " ；Unix: ./setup/install-capabilities.sh --only aotopsy"
+        )
 
     target = os.path.abspath(target_path)
     out_dir = os.path.join(os.path.dirname(target), os.path.splitext(os.path.basename(target))[0] + ".aotopsy")

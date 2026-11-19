@@ -12,7 +12,9 @@
 #   web       ffmpeg + ffprobe。HLS 取证核心。走包管理器安装。
 #   android   frida / frida-tools / objection / frida-dexdump / APKiD。独立 venv。
 #   scanners  nuclei / ffuf。可选。
-#   aotopsy   仅 Windows（aotopsy.exe 是 Windows PE 单文件），Unix 显式跳过。
+#   aotopsy   Flutter / Dart AOT。已有可执行文件则跳过；仅当
+#             Tool/aotopsy/go.mod 存在且本机有 go 时才编译安装。
+#             当前仓库没有 go.mod，缺件不会让 --only all 失败。
 #
 # 纪律
 #   · 默认只装 web + android（Unix 上真正零成本的只有这两项里的检测）
@@ -51,7 +53,7 @@ while [ $# -gt 0 ]; do
         --skip-path)       SKIP_PATH=1; shift ;;
         --root)            TOOLBOX_ROOT="${2:-}"; shift 2 ;;
         --root=*)          TOOLBOX_ROOT="${1#*=}"; shift ;;
-        -h|--help)         sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)         sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "未知参数: $1" >&2; exit 2 ;;
     esac
 done
@@ -126,7 +128,9 @@ board() {
         else warn "$(printf '%-10s MISSING' "$n")"; fi
     done
     echo -e "  ${WHITE}-- Flutter AOT --${RESET}"
-    warn "$(printf '%-10s %s' aotopsy "Windows-only（aotopsy.exe 为 Windows PE）")"
+    p="$(resolve_android aotopsy)"
+    if [ -n "$p" ]; then ok "$(printf '%-10s %s' aotopsy "$p")"
+    else warn "$(printf '%-10s %s' aotopsy "未安装（./setup/install-capabilities.sh --only aotopsy）")"; fi
 }
 
 echo -e "${CYAN}================================================================================${RESET}"
@@ -284,9 +288,34 @@ do_scanners() {
 # ---------------------------------------------------------------- aotopsy
 do_aotopsy() {
     step "aotopsy — Flutter / Dart AOT 分析"
-    warn "Unix 跳过：aotopsy.exe 是 Windows PE 单文件，无法在 Linux/macOS 运行"
-    info "Unix 上的 Flutter 分析路线：用 apktool 解包后直接读 libapp.so 的 Dart 符号，"
-    info "或用 seep_aotopsy 的诊断输出定位 libapp.so 再交给 radare2 / IDA"
+    local dest="$ANDROID_ROOT/bin/aotopsy"
+    local src="$ROOT/Tool/aotopsy"
+    if [ -x "$dest" ]; then
+        ok "aotopsy 已是可执行文件，跳过：$dest"
+        return 0
+    fi
+    if [ -f "$src/go.mod" ] && have go; then
+        info "发现 Tool/aotopsy/go.mod，正在编译并安装到 $dest"
+        mkdir -p "$ANDROID_ROOT/bin"
+        if ( cd "$src" && go build -o "$dest" . ); then
+            chmod +x "$dest" 2>/dev/null || true
+            ok "aotopsy 已安装：$dest"
+            return 0
+        fi
+        warn "go build 失败。可手工执行："
+        echo "        ( cd \"$src\" && go build -o \"$dest\" . )"
+        return 0
+    fi
+    if [ -f "$src/go.mod" ]; then
+        warn "有 Tool/aotopsy/go.mod，但本机没有 go，未编译。手工命令："
+        echo "        ( cd \"$src\" && go build -o \"$dest\" . )"
+        info "安装 Go 后重跑：./setup/install-capabilities.sh --only aotopsy"
+        return 0
+    fi
+    warn "仓库目前只有 Windows 的 aotopsy.exe，没有 Tool/aotopsy/go.mod，不能从本仓库编译 Unix 二进制。"
+    info "请把本机可用的 aotopsy 可执行文件放到：$dest"
+    info "若以后树里出现 go.mod，且本机有 go，同一脚本会编译安装到该路径。"
+    info "重跑：./setup/install-capabilities.sh --only aotopsy"
     return 0
 }
 

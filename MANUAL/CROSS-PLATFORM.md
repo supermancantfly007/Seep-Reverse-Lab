@@ -13,7 +13,7 @@ Seep Lab经过跨平台路径与工具抽象后，对不同操作系统具备分
 | **Android 逆向 (apkseep)** | 🟢 **原生完美支持** | 🟢 **原生完美支持** | 🟢 原生支持 | JADX + Apktool (Java跨平台) + ADB + Frida |
 | **Web 方法论 / JS 签名取证** | 🟢 原生支持 | 🟢 原生支持 | 🟢 原生支持 | Playwright + `js_reverse_*` + 知识库（与平台无关） |
 | **Web / 流媒体取证工具链**（8 个 `seep_web_*`） | 🟢 **Python 引擎** | 🟢 **Python 引擎** | 🟢 Python 引擎 | `Tool/scripts/web/web.py`，不再依赖 PowerShell；HLS 实解另需 ffmpeg/ffprobe |
-| **Flutter / Dart AOT**（`seep_aotopsy`） | 🔴 **不支持** | 🔴 **不支持** | 🟢 原生支持 | `aotopsy.exe` 是 Windows PE 单文件；Unix 请用 apktool 解包后交给 r2/IDA |
+| **Flutter / Dart AOT**（`seep_aotopsy`） | 🟡 认本机 aotopsy | 🟡 认本机 aotopsy | 🟢 原生支持 | Unix 认本机 aotopsy 可执行文件。当前仓库未带 darwin/linux 二进制，也没有 go.mod；装上或以后补源码后由 `./setup/install-capabilities.sh --only aotopsy` 接手 |
 | **跨平台二进制分析 (seep)** | 🟢 **原生支持** (系统r2) | 🟢 **原生支持** (系统r2) | 🟢 内置r2.exe | Radare2 自动探测系统 `radare2` / `rabin2` / `rasm2` |
 | **IDA Pro 自动化联动** | 🟡 **需本地 Mac 版 IDA** | 🟡 **需本地 Linux 版 IDA** | 🟢 内置脚本探测 | idalib / ida_pro_mcp 走 stdio。13337 只是旧 GUI 插件，没监听不等于不可用 |
 | **Windows PE 客户端逆向** | 🟡 **交叉静态分析** | 🟡 **交叉静态分析** | 🟢 本地动态执行 | 在 Mac/Linux 下使用 R2/Ghidra 提取逻辑，或使用 Wine/虚拟机 |
@@ -33,7 +33,7 @@ Seep Lab经过跨平台路径与工具抽象后，对不同操作系统具备分
 | `frida` / `objection` | `seep_android_toolbox`、动态插桩与脱壳 | 🟢 支持（独立 venv） | `./setup/install-capabilities.sh --only android` |
 | `apkid` | `seep_apkid_scan`（加固/混淆器指纹） | 🟢 支持（独立 venv） | `./setup/install-capabilities.sh --only android` |
 | `nuclei` / `ffuf` | `seep_web_report` 的可选漏扫环节 | 🟡 优先 brew，其余需手动 | `./setup/install-capabilities.sh --only scanners` |
-| `aotopsy` | `seep_aotopsy`（Flutter AOT） | 🔴 不支持（Windows PE） | 不适用；改用 apktool + r2/IDA |
+| `aotopsy` | `seep_aotopsy`（Flutter AOT） | 🟡 认本机可执行文件 | 当前仓库未带 darwin/linux 二进制，也没有 go.mod。自行放到 `~/.seep/android/bin/aotopsy`，或以后补源码后由 `./setup/install-capabilities.sh --only aotopsy` 接手 |
 
 ```bash
 ./setup/install-capabilities.sh                  # 默认：检测/安装 ffmpeg
