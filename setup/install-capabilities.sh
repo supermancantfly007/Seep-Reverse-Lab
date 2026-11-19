@@ -286,12 +286,29 @@ do_scanners() {
 }
 
 # ---------------------------------------------------------------- aotopsy
+# aotopsy 1.6 的查找顺序：~/.aotopsy/ida_scripts、可执行文件同目录的 ida_scripts、再上一级。ghidra_scripts 同样。
+# 仓库里的 ida_scripts / ghidra_scripts 跟二进制一起放下，`aotopsy ida` / `ghidra` 才找得到。
+sync_aotopsy_assets() {
+    local dest_bin="$1"
+    local src="$2"
+    local kind dest_dir home_root="${SEEP_AOTOPSY_HOME:-$HOME/.aotopsy}"
+    [ -d "$src/ida_scripts" ] && [ -d "$src/ghidra_scripts" ] || return 0
+    dest_dir="$(dirname "$dest_bin")"
+    for kind in ida_scripts ghidra_scripts; do
+        mkdir -p "$dest_dir/$kind" "$home_root/$kind"
+        cp -R "$src/$kind/." "$dest_dir/$kind/"
+        cp -R "$src/$kind/." "$home_root/$kind/"
+    done
+    ok "aotopsy 脚本已放到 $dest_dir 与 $home_root"
+}
+
 do_aotopsy() {
     step "aotopsy — Flutter / Dart AOT 分析"
     local dest="$ANDROID_ROOT/bin/aotopsy"
     local src="$ROOT/Tool/aotopsy"
     if [ -x "$dest" ]; then
         ok "aotopsy 已是可执行文件，跳过：$dest"
+        sync_aotopsy_assets "$dest" "$src"
         return 0
     fi
     if [ -f "$src/go.mod" ] && have go; then
@@ -300,6 +317,7 @@ do_aotopsy() {
         if ( cd "$src" && go build -o "$dest" . ); then
             chmod +x "$dest" 2>/dev/null || true
             ok "aotopsy 已安装：$dest"
+            sync_aotopsy_assets "$dest" "$src"
             return 0
         fi
         warn "go build 失败。可手工执行："

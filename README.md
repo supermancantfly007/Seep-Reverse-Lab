@@ -227,7 +227,7 @@ Seep\ (881 MB, of which 657 MB is the offline toolchain)
 │   │   ├── open-tgtylab\          ← GeniusHu-tgty/Open-tgtylab
 │   │   ├── open-reverselab\       ← LING71671/open-reverselab
 │   │   └── exe-reverse\           ← dabao1955/exe-reverse
-│   ├── aotopsy\                   ← Flutter AOT analysis (Windows-only)
+│   ├── aotopsy\                   ← Flutter AOT (repo ships Windows PE only; Unix uses a local binary)
 │   ├── docs\                      ← Engineering references (TOOLKIT_GUIDE / PROVENANCE / DOWNLOADS)
 │   └── scripts\                   ← Workspace automation
 │       └── compliance-relay\      ← 🌐 Transport-layer compliance relay (stdlib-only, 3 protocols)
@@ -362,8 +362,7 @@ powershell -File setup\install-capabilities.ps1 -CheckOnly  # report only, no di
 
 > A missing component never blocks the MCP server: the affected tool returns an explicit fix hint,
 > and `check.ps1` / `verify.sh` reports it as 🟡 DEGRADED rather than a failure.
-> **Platform limits**: `aotopsy` (Flutter AOT) is Windows-only, and the eight `seep_web_*` tools
-> drive PowerShell scripts, so Unix needs PowerShell 7 installed first.
+> **Platform limits**: the repo ships only the Windows `aotopsy.exe` (no `go.mod`). On Unix, put a local binary at `~/.seep/android/bin/aotopsy`. The eight `seep_web_*` tools run through `Tool/scripts/web/web.py` and do not need PowerShell.
 > See [CROSS-PLATFORM.md](MANUAL/CROSS-PLATFORM.md).
 > See [MANUAL/DEPLOYMENT.md — external capability packages](MANUAL/DEPLOYMENT.md#5-外部能力包为什么需要单独一步).
 

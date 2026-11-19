@@ -492,7 +492,8 @@ python setup/test_dsh_mount.py
 - 不搬动 `Tool/mcp/Tool/` —— `seep_mcp_server.py` 内部按相对路径解析运行时依赖。
 - IDA Pro 需自备授权；无授权时自动由内置 Radare2 承接。
 - 所有测试目标须确认已获授权（G-Auth 门）。
-- **平台边界**：8 个 `seep_web_*` 工具依赖 PowerShell 取证脚本（Unix 需装 pwsh），
-  `seep_aotopsy` 是 Windows PE 单文件（Unix 不适用）。详见
+- **平台边界**：8 个 `seep_web_*` 由 `Tool/scripts/web/web.py` 驱动，不需要 PowerShell。
+  `seep_aotopsy` 认本机可执行文件。仓库只带 Windows 的 `aotopsy.exe`、没有 `go.mod`；
+  Unix 把二进制放到 `~/.seep/android/bin/aotopsy` 后即为 ready。详见
   [MANUAL/CROSS-PLATFORM.md](../MANUAL/CROSS-PLATFORM.md)。
 - 部署与排障详见 [MANUAL/DEPLOYMENT.md](../MANUAL/DEPLOYMENT.md)。

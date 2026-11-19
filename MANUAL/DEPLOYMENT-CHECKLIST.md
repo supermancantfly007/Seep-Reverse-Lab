@@ -31,7 +31,7 @@
 | **S1** | **`softseep`** ⭐总控 | `~/.pi/agent/skills/softseep/` | `SKILL.md` + 10 篇 `references/` (≥11 项) | `SKILL.md`<br>`references/license-validation.md`<br>`references/gate-crosswalk.md` | 检查 10 篇 references 齐全，G0-G6 门控完整，三层门禁 crosswalk 在位 | 🟢 **核心**。缺失则总控瘫痪。修复：`powershell setup\install-pi.ps1` |
 | **S1b** | **`exe-reverse`** | `~/.pi/agent/skills/exe-reverse/` | `SKILL.md` + 41 refs + 16 scripts (≥65 项) | `SKILL.md`<br>`scripts/doctor.py`<br>`LOCAL-NOTES.md` | 运行 `python scripts/doctor.py`（应输出 16/16 scripts runnable）；`references/routing.md` 在位 | 🟢 **核心**。Windows PE 深水区引擎。修复：重跑 `install-pi.ps1` |
 | **S2** | **`apkseep`** | `~/.pi/agent/skills/apkseep/` | `SKILL.md` + 45 refs + 56 scripts (≥115 项) | `SKILL.md`<br>`scripts/doctor.py` | 运行 `python scripts/doctor.py` 无报错 | 🟢 **核心**。安卓全链路专精。修复：重跑 `install-pi.ps1` |
-| **S3** | **`ida-reverse`** | `~/.pi/agent/skills/ida-reverse/` | `SKILL.md` + `scripts/` (≥3 项) | `SKILL.md`<br>`scripts/start.ps1` | 包含 IDA 13337 端口自动唤醒规约 | 🟢 **核心**。IDA 自动化调度器。修复：重跑 `install-pi.ps1` |
+| **S3** | **`ida-reverse`** | `~/.pi/agent/skills/ida-reverse/` | `SKILL.md` + `scripts/` (≥3 项) | `SKILL.md`<br>`scripts/start.ps1` | idalib stdio：`seep_ida_status` 的 `usable=true` 即就绪；13337 关闭不是故障。`start.ps1` 只服务 Windows 旧 HTTP | 🟢 **核心**。IDA 自动化调度器。修复：重跑 `install-pi.ps1` |
 | **S4** | **`client-license-validation-bypass`** | `~/.pi/agent/skills/client-license-validation-bypass/` | `SKILL.md` (≥1 项) | `SKILL.md` | 包含 CWE-602 战术树与补丁/算号决策 | 🟢 **核心**。授权审计战术库。修复：重跑 `install-pi.ps1` |
 | **S5** | **`reverse-engineering`** | `~/.pi/agent/skills/reverse-engineering/` | `SKILL.md` + references (≥15 项) | `SKILL.md` | 通用逆向基准规则在位 | 🟢 战术包。修复：复制 `Tool/skill/safe-skills/reverse-engineering` |
 | **S6** | **`apk-diff`** | `~/.pi/agent/skills/apk-diff/` | `SKILL.md` + scripts (≥8 项) | `SKILL.md` | 二进制与 APK 差分工具在位 | 🟢 战术包。修复：复制 `Tool/skill/safe-skills/apk-diff` |
@@ -167,13 +167,12 @@ MCP 配置文件所在位置：
 | frida + objection | `seep_android_toolbox`、动态插桩 | 可执行 | `-Only android` | `--only android` | 🟡 DEGRADED |
 | apkid | `seep_apkid_scan` | 可执行 | `-Only android` | `--only android` | 🟡 DEGRADED |
 | nuclei + ffuf | `seep_web_report`（可选） | 可执行 | `-Only scanners` | `--only scanners` | 🟡 DEGRADED |
-| aotopsy | `seep_aotopsy`（Flutter AOT） | Windows PE | `-Only aotopsy`（仓库自带，零网络） | 🔴 不支持 | 🟡 DEGRADED / N/A |
+| aotopsy | `seep_aotopsy`（Flutter AOT） | 本机可执行文件。仓库只带 Windows `aotopsy.exe`，没有 go.mod | `-Only aotopsy`（复制 exe） | 放到 `~/.seep/android/bin/aotopsy`；没有源码时脚本说明并退出 0 | 未安装是 🟡 DEGRADED |
 
 > **判定原则**：外部程序不在仓库里（体积 / 平台 / 版本耦合），缺失**不阻塞 MCP 启动**。
 > 相关工具会返回明确的修复指引，其余工具照常工作 —— 所以统一归 `🟡 DEGRADED`，不判 `🔴 MISSING`。
 >
-> **平台边界**：`aotopsy` 是 Windows PE 单文件，Unix 不适用；8 个 `seep_web_*` 工具依赖
-> Python 引擎（`Tool/scripts/web/web.py`），不再依赖 PowerShell。详见 [CROSS-PLATFORM.md](CROSS-PLATFORM.md)。
+> **平台边界**：仓库只带 Windows 的 `aotopsy.exe`，没有 `go.mod`。本机可执行文件就位后 `seep_status` 报 `ready`，否则 `not-installed`。8 个 `seep_web_*` 走 `Tool/scripts/web/web.py`，不需要 PowerShell。详见 [CROSS-PLATFORM.md](CROSS-PLATFORM.md)。
 
 #### 3c. 🧭 外部工具定位规则 (Tool Registry)
 

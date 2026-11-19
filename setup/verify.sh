@@ -9,7 +9,7 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TOOL_DIR="$ROOT/Tool"
 SAFE_DIR="$TOOL_DIR/mcp/Tool/safe"
 KB_DIR="$TOOL_DIR/mcp/Tool/reverselab/kb"
-AGENT_DIR="$HOME/.pi/agent"
+AGENT_DIR="${SEEP_AGENT_DIR:-$HOME/.pi/agent}"
 MANUAL_DIR="$ROOT/MANUAL"
 
 GREEN="\033[1;32m"
@@ -58,27 +58,41 @@ echo -e "  宿主操作系统内核: $(uname -s) $(uname -r) ($(uname -m))"
 echo -e "  基准核验清单规范: MANUAL/DEPLOYMENT-CHECKLIST.md"
 
 # 解析一个「真的能执行」的 Python 解释器。
-# 不能只信 `command -v python3`：Windows/Git Bash 上可能只有 py 启动器、没有 python3；
-# 也可能存在指向已删 venv 的失效垫片。解释器不可用时，依赖它的检查项一律 SKIP 而不是
-# 报红 —— 否则一次环境问题会伪装成「语法错误 / 冒烟失败 / 规则不同步」三个故障。
+# 不能只信 `command -v python3`：macOS 的 /usr/bin/python3 能 import sys，但没有 mcp，
+# 会把体检打成「缺协议库」。真正跑 seep MCP 的是 ~/.pi/agent/seep-venv。
+# 顺序与 verify.ps1 一致：SEEP_PYTHON → seep-venv → PATH。
+# 解释器不可用时，依赖它的检查项一律 SKIP 而不是报红。
 PY_BIN=""
-if [ -n "${SEEP_PYTHON:-}" ] && [ -x "${SEEP_PYTHON}" ]; then
-    PY_BIN="$SEEP_PYTHON"
+try_py() {
+    local c="$1"
+    [ -n "$c" ] && [ -x "$c" ] || return 1
+    "$c" -c "import sys" >/dev/null 2>&1 || return 1
+    PY_BIN="$c"
+    return 0
+}
+if [ -n "${SEEP_PYTHON:-}" ]; then
+    try_py "$SEEP_PYTHON" || true
 fi
-for cand in python3 python; do
-    [ -n "$PY_BIN" ] && break
-    if command -v "$cand" >/dev/null 2>&1; then
-        if "$cand" -c "import sys" >/dev/null 2>&1; then PY_BIN="$(command -v "$cand")"; fi
-    fi
-done
+if [ -z "$PY_BIN" ]; then
+    for v in "$AGENT_DIR/seep-venv/bin/python" "$AGENT_DIR/seep-venv/Scripts/python.exe"; do
+        try_py "$v" && break
+    done
+fi
+if [ -z "$PY_BIN" ]; then
+    for cand in python3 python; do
+        if command -v "$cand" >/dev/null 2>&1; then
+            try_py "$(command -v "$cand")" && break
+        fi
+    done
+fi
 if [ -z "$PY_BIN" ] && command -v py >/dev/null 2>&1; then
     _real="$(py -3 -c "import sys; print(sys.executable)" 2>/dev/null || true)"
-    [ -n "$_real" ] && [ -x "$_real" ] && PY_BIN="$_real"
+    [ -n "$_real" ] && try_py "$_real" || true
 fi
-for v in "$AGENT_DIR/seep-venv/bin/python" "$AGENT_DIR/seep-venv/Scripts/python.exe"; do
-    [ -n "$PY_BIN" ] && break
-    [ -x "$v" ] && PY_BIN="$v"
-done
+if [ "${VERIFY_PRINT_PY:-0}" = 1 ]; then
+    printf '%s\n' "$PY_BIN"
+    exit 0
+fi
 
 # SEEP_PYTHON 可能是 Windows 原生路径（C:\\..\\python.exe）。
 # Git Bash 里这种路径带反斜杠 + 盘符，既不能过 [ -x ] 也不能直接执行，

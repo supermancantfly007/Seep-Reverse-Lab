@@ -227,7 +227,7 @@ Seep\ (881 MB，其中 657 MB 是离线工具链)
 │   │   ├── open-tgtylab\          ← GeniusHu-tgty/Open-tgtylab（攻防流水线）
 │   │   ├── open-reverselab\       ← LING71671/open-reverselab（知识库与工具生态）
 │   │   └── exe-reverse\           ← dabao1955/exe-reverse（PE 深水区）
-│   ├── aotopsy\                   ← Flutter AOT 分析（Windows-only）
+│   ├── aotopsy\                   ← Flutter AOT 分析（仓库只带 Windows PE；Unix 放入本机可执行文件）
 │   ├── docs\                      ← 工程参考文档（TOOLKIT_GUIDE / PROVENANCE / DOWNLOADS）
 │   └── scripts\                   ← 工作流自动化脚本
 │       └── compliance-relay\      ← 🌐 链路层合规转译中继（纯标准库，三协议）
@@ -359,8 +359,7 @@ powershell -File setup\install-capabilities.ps1 -CheckOnly  # 只看现状
 ```
 
 > 缺件不会让 MCP 起不来：相关工具会返回明确的修复指引，`check.ps1` / `verify.sh` 以 🟡 DEGRADED 标出，不判失败。
-> **平台边界**：`aotopsy`（Flutter AOT）为 Windows-only；8 个 `seep_web_*` 工具依赖 PowerShell 脚本，
-> Unix 需先装 PowerShell 7。详见 [CROSS-PLATFORM.md](MANUAL/CROSS-PLATFORM.md)。
+> **平台边界**：仓库只带 Windows 的 `aotopsy.exe`（没有 `go.mod`）。Unix 把本机可执行文件放到 `~/.seep/android/bin/aotopsy` 后即可用。8 个 `seep_web_*` 由 `Tool/scripts/web/web.py` 驱动，不需要 PowerShell。详见 [CROSS-PLATFORM.md](MANUAL/CROSS-PLATFORM.md)。
 > 详见 [MANUAL/DEPLOYMENT.md — 外部能力包](MANUAL/DEPLOYMENT.md#5-外部能力包为什么需要单独一步)。
 
 ### 3. 两个 Agent，两条接线

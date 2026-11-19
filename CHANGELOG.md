@@ -12,6 +12,15 @@
 
 ## [Unreleased]
 
+### 修复
+
+- `seep_status` 的 `flutter_aot` 不再把 Unix 写成 `windows-only`。本机 `aotopsy` 可执行则 `ready`，否则 `not-installed`，并说明仓库只有 Windows 的 `aotopsy.exe`、没有 `go.mod`。
+- `setup/update.sh` 在 macOS 自带 bash 3.2 上不再因运行模式多一层 `$()`、空数组遇 `set -u` 而中断。`git pull` 管道打开 `pipefail`，失败不会被 `sed` 掩掉。结尾的 aotopsy 看板改为 READY / MISSING，不再印 Windows-only。
+- README 中英与 `MANUAL/DEPLOYMENT-CHECKLIST.md`：Web 取证不要求 PowerShell 7；S3 不再把 13337 关闭当成 IDA 故障。
+- `setup/verify.sh` 选 Python 的顺序与 `verify.ps1` 对齐：先 `SEEP_PYTHON`，再 `~/.pi/agent/seep-venv`，最后才是 PATH。macOS 自带的 `/usr/bin/python3` 不再把已装好的 mcp 报成缺失。
+- `DSH-PROFILE.md` 的平台边界改成 Web 走 `web.py`、aotopsy 认本机可执行文件。
+- 已安装的 aotopsy 会从 `Tool/aotopsy` 同步 `ida_scripts` / `ghidra_scripts` 到二进制旁边和 `~/.aotopsy/`，供 `aotopsy ida` / `aotopsy ghidra` 发现。
+
 ### 变更
 
 - **只支持两个 Agent：Pi Agent 与 DeepSeek Harness。** 移除 Claude Code / OpenCode / Codex 的

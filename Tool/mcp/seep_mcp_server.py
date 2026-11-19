@@ -353,6 +353,47 @@ except Exception as _exc:  # noqa: BLE001
         }
 
 
+def _flutter_aot_boundary(resolved: Optional[str] = None, platform: Optional[str] = None) -> dict:
+    """Flutter AOT 就绪状态。与 install-capabilities.sh 一致：可执行则 ready，否则 not-installed。
+
+    不把非 Windows 写成不支持。仓库里的 aotopsy.exe 在非 Windows 上不算可用
+    （_resolve_android_tool 会跳过 .exe）。没有 go.mod 时也不要假装能从本仓库编出 Unix 二进制。
+    """
+    if resolved is None:
+        resolved = _resolve_android_tool("aotopsy")
+    if resolved and not os.access(resolved, os.X_OK):
+        resolved = None
+    plat = platform or sys.platform
+    tools = ["seep_aotopsy"]
+    if resolved:
+        return {
+            "status": "ready",
+            "requires": "aotopsy 可执行文件",
+            "path": resolved,
+            "tools": tools,
+            "note": "已找到本机 aotopsy。",
+        }
+    if plat == "win32":
+        note = (
+            "未安装。Windows: Tool/scripts/android/install-android-toolbox.ps1 -Only aotopsy"
+            "（仓库自带 aotopsy.exe）。"
+        )
+    else:
+        note = (
+            "未安装。仓库目前只有 Windows 的 aotopsy.exe，没有 Tool/aotopsy/go.mod，"
+            "不能从本仓库编译 Unix 二进制。"
+            "请把本机可用的 aotopsy 放到 SEEP_ANDROID_TOOLBOX/bin 或 ~/.seep/android/bin/aotopsy，"
+            "然后重跑 ./setup/install-capabilities.sh --only aotopsy。"
+        )
+    return {
+        "status": "not-installed",
+        "requires": "aotopsy 可执行文件（Windows 为 aotopsy.exe；Unix 为本机二进制，仓库不提供）",
+        "path": None,
+        "tools": tools,
+        "note": note,
+    }
+
+
 @server.tool()
 def seep_status(verify: bool = False) -> str:
     """检查 seep 逆向工具链状态、内置组件就绪度及系统环境配置。
@@ -377,9 +418,8 @@ def seep_status(verify: bool = False) -> str:
     apktool_status = "Ready (Jar present)" if os.path.isfile(APKTOOL_JAR) else "Missing"
     kb_status = f"Ready ({len(glob.glob(os.path.join(KB_DIR, '**', '*.md'), recursive=True))} documents)" if os.path.isdir(KB_DIR) else "Missing"
 
-    # 平台边界：如实上报哪些能力在当前系统上根本不成立。
-    # Web 取证已是 Python 引擎；Flutter AOT 仍是 Windows PE。
-    _win = sys.platform == "win32"
+    # 平台边界：如实上报。Web 取证是 Python 引擎。
+    # Flutter AOT 看本机有没有可执行文件，不把非 Windows 写死成不支持。
     platform_boundaries = {
         "platform": sys.platform,
         "web_forensics": {
@@ -392,12 +432,7 @@ def seep_status(verify: bool = False) -> str:
             ],
             "note": "取证引擎是 Tool/scripts/web/web.py（Python）。不再依赖 PowerShell。",
         },
-        "flutter_aot": {
-            "status": "ready" if _win else "windows-only",
-            "requires": "aotopsy.exe（Windows PE 单文件）",
-            "tools": ["seep_aotopsy"],
-            "note": "Unix 上请用 apktool 解包后把 libapp.so 交给 radare2 / IDA。",
-        },
+        "flutter_aot": _flutter_aot_boundary(),
     }
 
     status = {

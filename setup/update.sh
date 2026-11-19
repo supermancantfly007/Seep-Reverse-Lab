@@ -20,7 +20,9 @@
 #   ./setup/update.sh --no-pull
 # ==============================================================================
 
-set -u
+# pipefail：git pull | sed 不能让 sed 的成功把 pull 失败掩掉。
+# bash 3.2 上 set -u 时，空数组 "${arr[@]}" 是 unbound，展开前先看长度。
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -90,7 +92,21 @@ print("\n".join(keys))
 PY
 }
 
+run_mode_label() {
+    if [ "$DRY_RUN" = 1 ]; then
+        echo "DRY RUN（不修改任何文件）"
+    elif [ "$CAP_ONLY" = 1 ]; then
+        echo "仅补外部能力包（不动代码）"
+    else
+        echo "正常更新"
+    fi
+}
+
 detect_proxy() {
+    # 测试用：强制走「没有代理」分支，避免本机刚好开着代理时盖住空数组。
+    if [ "${SEEP_UPDATE_NO_PROXY:-0}" = 1 ]; then
+        return 0
+    fi
     for p in 10808 7897 7890; do
         if command -v ss >/dev/null 2>&1; then
             ss -ltn 2>/dev/null | grep -q ":$p " && { echo "$p"; return; }
@@ -116,7 +132,11 @@ if [ $CHECK_ONLY -eq 1 ]; then
     [ -n "$PROXY_PORT" ] && GIT_PROXY=("-c" "http.proxy=http://127.0.0.1:$PROXY_PORT" "-c" "https.proxy=http://127.0.0.1:$PROXY_PORT")
 
     if [ -d "$ROOT/.git" ]; then
-        REMOTE_LINE="$(git -C "$ROOT" "${GIT_PROXY[@]}" ls-remote origin refs/heads/main 2>/dev/null || true)"
+        if [ "${#GIT_PROXY[@]}" -gt 0 ]; then
+            REMOTE_LINE="$(git -C "$ROOT" "${GIT_PROXY[@]}" ls-remote origin refs/heads/main 2>/dev/null || true)"
+        else
+            REMOTE_LINE="$(git -C "$ROOT" ls-remote origin refs/heads/main 2>/dev/null || true)"
+        fi
         LOCAL_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
         if [ -n "$REMOTE_LINE" ] && [ -n "$LOCAL_SHA" ]; then
             REMOTE_SHA="$(echo "$REMOTE_LINE" | awk '{print $1}')"
@@ -134,7 +154,11 @@ if [ $CHECK_ONLY -eq 1 ]; then
     # 通过 curl 探测 VERSION
     CURL_PROXY=()
     [ -n "$PROXY_PORT" ] && CURL_PROXY=("-x" "http://127.0.0.1:$PROXY_PORT")
-    R_VER="$(curl -sSL "${CURL_PROXY[@]}" --max-time 5 https://raw.githubusercontent.com/angusdevgo/Seep-Reverse-Lab/main/VERSION 2>/dev/null | tr -d '[:space:]' || true)"
+    if [ "${#CURL_PROXY[@]}" -gt 0 ]; then
+        R_VER="$(curl -sSL "${CURL_PROXY[@]}" --max-time 5 https://raw.githubusercontent.com/angusdevgo/Seep-Reverse-Lab/main/VERSION 2>/dev/null | tr -d '[:space:]' || true)"
+    else
+        R_VER="$(curl -sSL --max-time 5 https://raw.githubusercontent.com/angusdevgo/Seep-Reverse-Lab/main/VERSION 2>/dev/null | tr -d '[:space:]' || true)"
+    fi
     if [ -n "$R_VER" ] && [ "$R_VER" != "$OLD_VERSION" ]; then
         echo -e "  ${YELLOW}[UPDATE]${RESET} 检测到新版本 v$R_VER 发布！(当前本地版本: v$OLD_VERSION)"
         echo -e "  提示: 执行 ./setup/update.sh 即可一键更新。"
@@ -148,7 +172,7 @@ IS_GIT=0; [ -d "$ROOT/.git" ] && IS_GIT=1
 
 echo -e "  当前版本    : v$OLD_VERSION"
 echo -e "  Git 仓库    : $([ "$IS_GIT" = 1 ] && echo '是（支持 git pull）' || echo '否（压缩包部署）')"
-echo -e "  运行模式    : $([ "$DRY_RUN" = 1 ] && echo 'DRY RUN（不修改任何文件）' || $([ "$CAP_ONLY" = 1 ] && echo '仅补外部能力包（不动代码）' || echo '正常更新'))"
+echo -e "  运行模式    : $(run_mode_label)"
 
 # --check-capabilities 短路：不动代码、不重装配置，只补能力包
 # 适合「网络拉不动代码但缺 ffmpeg/frida」的场景
@@ -216,7 +240,13 @@ else
         git stash push -u -m "seep-update-autostash-$(date +%Y%m%d-%H%M%S)" >/dev/null 2>&1 && STASHED=1
     fi
 
-    if git "${PROXY_ARGS[@]}" pull --rebase origin main 2>&1 | sed 's/^/    /'; then
+    pull_rc=0
+    if [ "${#PROXY_ARGS[@]}" -gt 0 ]; then
+        git "${PROXY_ARGS[@]}" pull --rebase origin main 2>&1 | sed 's/^/    /' || pull_rc=$?
+    else
+        git pull --rebase origin main 2>&1 | sed 's/^/    /' || pull_rc=$?
+    fi
+    if [ "$pull_rc" -eq 0 ]; then
         ok "代码已更新到最新版本"
     else
         fail "git pull 失败（可能是网络或代理问题）"
@@ -326,7 +356,14 @@ for n in ffmpeg ffprobe frida objection apkid nuclei ffuf; do
         echo -e "    ${YELLOW}[MISSING]${RESET} $(printf '%-10s' "$n")"
     fi
 done
-echo -e "    ${YELLOW}[N/A]${RESET}     $(printf '%-10s' aotopsy) Windows-only"
+aotopsy_bin="${SEEP_ANDROID_TOOLBOX:-$HOME/.seep/android}/bin/aotopsy"
+p="$(command -v aotopsy 2>/dev/null || true)"
+[ -z "$p" ] && [ -x "$aotopsy_bin" ] && p="$aotopsy_bin"
+if [ -n "$p" ]; then
+    echo -e "    ${GREEN}[READY]${RESET}   $(printf '%-10s' aotopsy) $p"
+else
+    echo -e "    ${YELLOW}[MISSING]${RESET} $(printf '%-10s' aotopsy) 未安装（仓库只有 Windows aotopsy.exe；放到 $aotopsy_bin）"
+fi
 echo -e ""
 echo -e "  缺件不影响 MCP 启动：相关工具会返回明确的修复指引，其余工具照常工作。"
 echo -e "  ${YELLOW}一条命令全补: ./setup/install-capabilities.sh --only all${RESET}"
